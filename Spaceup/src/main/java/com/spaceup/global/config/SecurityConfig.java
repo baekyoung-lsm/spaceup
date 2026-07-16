@@ -31,8 +31,12 @@ public class SecurityConfig {
 				.headers(headers -> headers.frameOptions(frame -> frame.disable()))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/member/join", "/api/member/login").permitAll()
-						.requestMatchers("/api/board/list/**", "/api/board/comment/list/**").permitAll().anyRequest()
-						.authenticated())
+						.requestMatchers("/api/board/list/**", "/api/board/comment/list/**").permitAll()
+						// ⭐ 확장 지점: 관리자 전용 API가 생기면 아래처럼 역할별로 제한하세요.
+						// MemberPrincipal.getAuthorities()가 "ROLE_ADMIN" 형태를 반환하므로 hasRole("ADMIN")과 매칭됩니다.
+						// .requestMatchers("/api/admin/**").hasRole("ADMIN")
+						// .requestMatchers("/api/quotes/**").hasAnyRole("CONTRACTOR", "LANDLORD")
+						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable());
 

@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.spaceup.domain.member.dto.MemberResponse;
 import com.spaceup.domain.member.entity.Member;
+import com.spaceup.domain.member.entity.MemberRole;
 import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.global.error.DuplicateMemberException;
 import com.spaceup.global.error.MemberNotFoundException;
@@ -26,8 +27,14 @@ public class MemberService {
 		validateDuplicateMember(member.getUsername());
 		String encodedPassword = passwordEncoder.encode(member.getPassword());
 
+		// ⭐ 시공사/자재업체는 관리자 승인 전까지 approved=false로 가입시킵니다(PDF 관리자 화면의 "검토 중" 상태 시작점).
+		// 임대인은 가입 즉시 이용 가능해야 하므로 true.
+		boolean needsAdminApproval = member.getRole() == MemberRole.CONTRACTOR
+				|| member.getRole() == MemberRole.MATERIAL_VENDOR;
+
 		Member encryptedMember = Member.builder().username(member.getUsername()).password(encodedPassword)
-				.email(member.getEmail()).name(member.getName()).build();
+				.email(member.getEmail()).name(member.getName()).role(member.getRole())
+				.approved(!needsAdminApproval).build();
 
 		memberRepository.save(encryptedMember);
 		return encryptedMember.getId();

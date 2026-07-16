@@ -29,7 +29,7 @@ public class MemberController {
 	@PostMapping("/join")
 	public ResponseEntity<ApiResponse<Void>> join(@Valid @RequestBody MemberJoinRequest request) {
 		Member member = Member.builder().username(request.getUsername()).password(request.getPassword())
-				.email(request.getEmail()).name(request.getName()).build();
+				.email(request.getEmail()).name(request.getName()).role(request.getRole()).build();
 		memberService.join(member);
 		return ResponseEntity.ok(ApiResponse.success("회원가입이 완벽하게 완료되었습니다.", null));
 	}

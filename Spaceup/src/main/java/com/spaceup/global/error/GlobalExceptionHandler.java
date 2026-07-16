@@ -69,4 +69,23 @@ public class GlobalExceptionHandler {
 		log.warn("탈퇴 회원 로그인 시도: {}", e.getMessage());
 		return ResponseEntity.status(403).body(ApiResponse.fail(e.getMessage()));
 	}
+
+	@ExceptionHandler(RequestNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleRequestNotFoundException(RequestNotFoundException e) {
+		log.warn("의뢰 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(QuoteNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleQuoteNotFoundException(QuoteNotFoundException e) {
+		log.warn("견적 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(InvalidStatusTransitionException.class)
+	public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransitionException(
+			InvalidStatusTransitionException e) {
+		log.warn("잘못된 상태 변경 시도: {}", e.getMessage());
+		return ResponseEntity.status(409).body(ApiResponse.fail(e.getMessage()));
+	}
 }

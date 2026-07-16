@@ -3,6 +3,8 @@ package com.spaceup.domain.member.entity;
 import java.time.LocalDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,6 +43,16 @@ public class Member {
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt; // 가입 일시
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private MemberRole role; // ⭐ 로그인 유형(임대인/시공사/자재업체/관리자) - PDF 로그인 화면의 역할 탭에 대응
+
+	// ⭐ 시공사/자재업체는 관리자 승인 전까지 활동이 제한됩니다(PDF 관리자 화면의 "승인/검토중/심사중" 상태).
+	// 임대인/관리자는 가입 즉시 true로 취급하고, CONTRACTOR/MATERIAL_VENDOR만 false로 시작합니다.
+	@Builder.Default
+	@Column(nullable = false)
+	private boolean approved = true;
+
 	@Builder.Default
 	@Column(nullable = false)
 	private boolean withdrawn = false; // 탈퇴 여부 (소프트 삭제 플래그)
@@ -57,6 +69,11 @@ public class Member {
 	public void updateProfile(String email, String name) {
 		this.email = email;
 		this.name = name;
+	}
+
+	// ⭐ 관리자 승인 처리(시공사/자재업체 전용). 추후 domain/admin 서비스에서 호출합니다.
+	public void approve() {
+		this.approved = true;
 	}
 
 	/**
