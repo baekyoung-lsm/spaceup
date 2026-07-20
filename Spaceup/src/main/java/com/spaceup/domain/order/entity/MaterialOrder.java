@@ -58,11 +58,19 @@ public class MaterialOrder extends BaseTimeEntity {
 	@Column(nullable = false, length = 20)
 	private OrderStatus status;
 
+	public void markReady() {
+		this.status = OrderStatus.READY_TO_SHIP;
+	}
+
 	public void markShipped() {
 		this.status = OrderStatus.SHIPPING;
 	}
 
 	public void complete() {
 		this.status = OrderStatus.COMPLETED;
+	}
+
+	public void completePayment() {
+		this.paymentCompleted = true;
 	}
 }

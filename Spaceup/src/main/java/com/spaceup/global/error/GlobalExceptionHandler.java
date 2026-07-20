@@ -88,4 +88,34 @@ public class GlobalExceptionHandler {
 		log.warn("잘못된 상태 변경 시도: {}", e.getMessage());
 		return ResponseEntity.status(409).body(ApiResponse.fail(e.getMessage()));
 	}
+
+	@ExceptionHandler(ProductNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleProductNotFoundException(ProductNotFoundException e) {
+		log.warn("상품 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(OrderNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleOrderNotFoundException(OrderNotFoundException e) {
+		log.warn("주문 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(SettlementNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleSettlementNotFoundException(SettlementNotFoundException e) {
+		log.warn("정산 내역 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(NotificationNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleNotificationNotFoundException(NotificationNotFoundException e) {
+		log.warn("알림 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(ScheduleNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleScheduleNotFoundException(ScheduleNotFoundException e) {
+		log.warn("일정 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
 }

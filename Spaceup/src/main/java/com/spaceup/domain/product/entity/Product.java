@@ -80,6 +80,25 @@ public class Product extends BaseTimeEntity {
 		this.stockQty += delta;
 		if (this.stockQty <= 0) {
 			this.status = ProductStatus.SOLD_OUT;
+		} else if (this.status == ProductStatus.SOLD_OUT) {
+			this.status = ProductStatus.ON_SALE; // 재입고되면 다시 판매중으로
 		}
+	}
+
+	// ⭐ PDF "자재 등록/수정" 화면에서 기존 상품을 수정할 때 사용
+	public void updateInfo(String name, String spec, String color, Long supplyPrice, Long salePrice,
+			Integer minOrderQty, String manufacturer, String brand) {
+		this.name = name;
+		this.spec = spec;
+		this.color = color;
+		this.supplyPrice = supplyPrice;
+		this.salePrice = salePrice;
+		this.minOrderQty = minOrderQty;
+		this.manufacturer = manufacturer;
+		this.brand = brand;
+	}
+
+	public void changeStatus(ProductStatus status) {
+		this.status = status;
 	}
 }
