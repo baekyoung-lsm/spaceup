@@ -44,21 +44,21 @@ public class QuoteController {
 
 	// ⭐ PDF "견적 제안 보내기" 버튼
 	@PostMapping("/{quoteId}/submit")
-	public ResponseEntity<ApiResponse<Void>> submit(@PathVariable Long quoteId) {
-		quoteService.submit(quoteId);
+	public ResponseEntity<ApiResponse<Void>> submit(@PathVariable Long quoteId, Authentication authentication) {
+		quoteService.submit(quoteId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("견적을 발송했습니다.", null));
 	}
 
 	// ⭐ 임대인이 마이페이지 등에서 견적을 최종 선택
 	@PostMapping("/{quoteId}/accept")
-	public ResponseEntity<ApiResponse<Void>> accept(@PathVariable Long quoteId) {
-		quoteService.accept(quoteId);
+	public ResponseEntity<ApiResponse<Void>> accept(@PathVariable Long quoteId, Authentication authentication) {
+		quoteService.accept(quoteId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("견적을 선택했습니다.", null));
 	}
 
 	@PostMapping("/{quoteId}/reject")
-	public ResponseEntity<ApiResponse<Void>> reject(@PathVariable Long quoteId) {
-		quoteService.reject(quoteId);
+	public ResponseEntity<ApiResponse<Void>> reject(@PathVariable Long quoteId, Authentication authentication) {
+		quoteService.reject(quoteId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("견적을 거절했습니다.", null));
 	}
 

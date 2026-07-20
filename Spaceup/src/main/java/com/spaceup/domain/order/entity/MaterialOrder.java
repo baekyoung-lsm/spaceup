@@ -73,4 +73,9 @@ public class MaterialOrder extends BaseTimeEntity {
 	public void completePayment() {
 		this.paymentCompleted = true;
 	}
+
+	// ⭐ DB가 부여한 auto-increment id를 이용해 코드를 나중에 붙일 때 사용 (OrderService 참고)
+	public void assignCode(String orderCode) {
+		this.orderCode = orderCode;
+	}
 }

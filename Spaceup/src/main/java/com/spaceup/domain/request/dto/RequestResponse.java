@@ -20,7 +20,6 @@ public class RequestResponse {
 	private final Long budget;
 	private final String desiredDate;
 	private final String requestedItems;
-	private final Integer matchingScore; // spaceAnalysis에서 꺼낸 매칭 점수 (없으면 null)
 	private final RequestStatus status;
 	private final LocalDateTime createdAt;
 
@@ -36,8 +35,6 @@ public class RequestResponse {
 		this.budget = request.getBudget();
 		this.desiredDate = request.getDesiredDate();
 		this.requestedItems = request.getRequestedItems();
-		this.matchingScore = request.getSpaceAnalysis() != null ? request.getSpaceAnalysis().getMatchingScore()
-				: null;
 		this.status = request.getStatus();
 		this.createdAt = request.getCreatedAt();
 	}

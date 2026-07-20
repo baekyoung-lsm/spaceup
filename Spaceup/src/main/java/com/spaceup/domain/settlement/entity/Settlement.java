@@ -58,4 +58,9 @@ public class Settlement extends BaseTimeEntity {
 	public void complete() {
 		this.status = SettlementStatus.SETTLED;
 	}
+
+	// ⭐ DB가 부여한 auto-increment id를 이용해 코드를 나중에 붙일 때 사용 (SettlementService 참고)
+	public void assignCode(String transactionCode) {
+		this.transactionCode = transactionCode;
+	}
 }

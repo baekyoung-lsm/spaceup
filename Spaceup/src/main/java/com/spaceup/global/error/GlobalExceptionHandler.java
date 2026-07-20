@@ -118,4 +118,28 @@ public class GlobalExceptionHandler {
 		log.warn("일정 조회 실패: {}", e.getMessage());
 		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
 	}
+
+	@ExceptionHandler(InvalidRoleException.class)
+	public ResponseEntity<ApiResponse<Void>> handleInvalidRoleException(InvalidRoleException e) {
+		log.warn("허용되지 않은 역할의 접근: {}", e.getMessage());
+		return ResponseEntity.status(403).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(AnalysisNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleAnalysisNotFoundException(AnalysisNotFoundException e) {
+		log.warn("분석 결과 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(SettingNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleSettingNotFoundException(SettingNotFoundException e) {
+		log.warn("시스템 설정 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	@ExceptionHandler(ForbiddenAccessException.class)
+	public ResponseEntity<ApiResponse<Void>> handleForbiddenAccessException(ForbiddenAccessException e) {
+		log.warn("본인 소유가 아닌 리소스 접근 시도: {}", e.getMessage());
+		return ResponseEntity.status(403).body(ApiResponse.fail(e.getMessage()));
+	}
 }

@@ -101,4 +101,9 @@ public class Product extends BaseTimeEntity {
 	public void changeStatus(ProductStatus status) {
 		this.status = status;
 	}
+
+	// ⭐ DB가 부여한 auto-increment id를 이용해 코드를 나중에 붙일 때 사용 (ProductService 참고)
+	public void assignCode(String productCode) {
+		this.productCode = productCode;
+	}
 }

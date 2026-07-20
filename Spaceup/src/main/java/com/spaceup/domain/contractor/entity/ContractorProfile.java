@@ -1,0 +1,88 @@
+package com.spaceup.domain.contractor.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+
+import com.spaceup.domain.member.entity.Member;
+import com.spaceup.global.entity.BaseTimeEntity;
+
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+/**
+ * ⭐ Member(role=CONTRACTOR)에 딸린 1:1 부가 정보입니다. Member를 role 공용 엔티티로 가볍게 유지하고,
+ * 시공사만 갖는 속성(사업자번호/활동지역/전문분야/포트폴리오/평점)은 여기로 분리했습니다. 가입 직후엔 없을 수 있고
+ * (member/service 쪽에서 role=CONTRACTOR로 가입해도 자동 생성하지 않음), 온보딩 단계에서 최초 등록/수정 API로
+ * 채워 넣는 구조입니다.
+ */
+@Entity
+@Table(name = "contractor_profiles")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@lombok.AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class ContractorProfile extends BaseTimeEntity {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "member_id", nullable = false, unique = true)
+	private Member member;
+
+	@Column(name = "business_reg_no", length = 20)
+	private String businessRegistrationNumber; // 사업자등록번호
+
+	@Column(name = "company_name", length = 50)
+	private String companyName;
+
+	@Column(name = "activity_regions", length = 200)
+	private String activityRegions; // 활동 지역 (콤마 구분, 예: "광주 북구,광주 서구")
+
+	@Column(name = "specialties", length = 200)
+	private String specialties; // 전문 분야 (콤마 구분, 예: "도배,바닥재,조명")
+
+	@Column(name = "portfolio_url", length = 300)
+	private String portfolioUrl;
+
+	@Column(name = "introduction", length = 500)
+	private String introduction;
+
+	@Builder.Default
+	@Column(name = "rating")
+	private Double rating = 0.0; // 평균 평점
+
+	@Builder.Default
+	@Column(name = "completed_project_count")
+	private Integer completedProjectCount = 0;
+
+	public void updateProfile(String businessRegistrationNumber, String companyName, String activityRegions,
+			String specialties, String portfolioUrl, String introduction) {
+		this.businessRegistrationNumber = businessRegistrationNumber;
+		this.companyName = companyName;
+		this.activityRegions = activityRegions;
+		this.specialties = specialties;
+		this.portfolioUrl = portfolioUrl;
+		this.introduction = introduction;
+	}
+
+	// ⭐ 시공 완료(ScheduleEvent.complete()) 시점에 호출해 실적을 누적하는 확장 지점
+	public void increaseCompletedProject() {
+		this.completedProjectCount++;
+	}
+
+	// ⭐ 리뷰/평점 도메인이 생기면 그쪽에서 평균을 계산해 이 메서드로 반영
+	public void updateRating(double newRating) {
+		this.rating = newRating;
+	}
+}

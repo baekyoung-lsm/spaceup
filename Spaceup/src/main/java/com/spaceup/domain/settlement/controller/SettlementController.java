@@ -1,8 +1,9 @@
 package com.spaceup.domain.settlement.controller;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -30,16 +31,19 @@ public class SettlementController {
 	}
 
 	@GetMapping("/{settlementId}")
-	public ResponseEntity<ApiResponse<SettlementResponse>> getSettlement(@PathVariable Long settlementId) {
-		return ResponseEntity.ok(ApiResponse.success("정산 조회 완료", settlementService.getSettlement(settlementId)));
+	public ResponseEntity<ApiResponse<SettlementResponse>> getSettlement(@PathVariable Long settlementId,
+			Authentication authentication) {
+		return ResponseEntity.ok(
+				ApiResponse.success("정산 조회 완료", settlementService.getSettlement(settlementId, getMemberId(authentication))));
 	}
 
-	// ⭐ PDF "정산 관리" 화면 (시공사/자재업체 로그인 기준 - 본인 정산 내역)
+	// ⭐ PDF "정산 관리" 화면 (시공사/자재업체 로그인 기준 - 본인 정산 내역, 페이지네이션)
 	@GetMapping("/partner/me")
-	public ResponseEntity<ApiResponse<List<SettlementResponse>>> getMySettlements(Authentication authentication) {
+	public ResponseEntity<ApiResponse<Page<SettlementResponse>>> getMySettlements(
+			@PageableDefault(size = 20) Pageable pageable, Authentication authentication) {
 		Long partnerId = getMemberId(authentication);
 		return ResponseEntity
-				.ok(ApiResponse.success("정산 목록 조회 완료", settlementService.getSettlementsByPartner(partnerId)));
+				.ok(ApiResponse.success("정산 목록 조회 완료", settlementService.getSettlementsByPartner(partnerId, pageable)));
 	}
 
 	// ⭐ PDF "정산/수수료 관리(관리자)" - 정산 완료 처리 버튼

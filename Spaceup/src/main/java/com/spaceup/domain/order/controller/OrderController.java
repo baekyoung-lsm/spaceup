@@ -1,8 +1,9 @@
 package com.spaceup.domain.order.controller;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -37,41 +38,45 @@ public class OrderController {
 		return ResponseEntity.ok(ApiResponse.success("주문 조회 완료", orderService.getOrder(orderId)));
 	}
 
-	// ⭐ PDF "주문/발주 관리" 목록 (시공사 로그인 기준 - 본인 주문 내역)
+	// ⭐ PDF "주문/발주 관리" 목록 (시공사 로그인 기준 - 본인 주문 내역, 페이지네이션)
 	@GetMapping("/buyer/me")
-	public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders(Authentication authentication) {
+	public ResponseEntity<ApiResponse<Page<OrderResponse>>> getMyOrders(@PageableDefault(size = 20) Pageable pageable,
+			Authentication authentication) {
 		Long buyerId = getMemberId(authentication);
-		return ResponseEntity.ok(ApiResponse.success("주문 목록 조회 완료", orderService.getOrdersByBuyer(buyerId)));
+		return ResponseEntity.ok(ApiResponse.success("주문 목록 조회 완료", orderService.getOrdersByBuyer(buyerId, pageable)));
 	}
 
-	// ⭐ PDF "주문/발주 관리" 파이프라인별 목록 (자재업체 로그인 기준)
+	// ⭐ PDF "주문/발주 관리" 파이프라인별 목록 (자재업체 로그인 기준, 페이지네이션)
 	@GetMapping("/status/{status}")
-	public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrdersByStatus(@PathVariable OrderStatus status) {
-		return ResponseEntity.ok(ApiResponse.success("주문 목록 조회 완료", orderService.getOrdersByStatus(status)));
+	public ResponseEntity<ApiResponse<Page<OrderResponse>>> getOrdersByStatus(@PathVariable OrderStatus status,
+			@PageableDefault(size = 20) Pageable pageable) {
+		return ResponseEntity.ok(ApiResponse.success("주문 목록 조회 완료", orderService.getOrdersByStatus(status, pageable)));
 	}
 
-	// ⭐ PDF 파이프라인 단계 전환 버튼들 (자재업체 액션)
+	// ⭐ PDF 파이프라인 단계 전환 버튼들 (해당 상품을 등록한 자재업체 본인만)
 	@PostMapping("/{orderId}/ready")
-	public ResponseEntity<ApiResponse<Void>> markReady(@PathVariable Long orderId) {
-		orderService.markReady(orderId);
+	public ResponseEntity<ApiResponse<Void>> markReady(@PathVariable Long orderId, Authentication authentication) {
+		orderService.markReady(orderId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("출고 준비 상태로 변경되었습니다.", null));
 	}
 
 	@PostMapping("/{orderId}/ship")
-	public ResponseEntity<ApiResponse<Void>> markShipped(@PathVariable Long orderId) {
-		orderService.markShipped(orderId);
+	public ResponseEntity<ApiResponse<Void>> markShipped(@PathVariable Long orderId, Authentication authentication) {
+		orderService.markShipped(orderId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("배송 중 상태로 변경되었습니다.", null));
 	}
 
 	@PostMapping("/{orderId}/complete")
-	public ResponseEntity<ApiResponse<Void>> complete(@PathVariable Long orderId) {
-		orderService.complete(orderId);
+	public ResponseEntity<ApiResponse<Void>> complete(@PathVariable Long orderId, Authentication authentication) {
+		orderService.complete(orderId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("주문이 완료 처리되었습니다.", null));
 	}
 
+	// ⭐ 결제 완료 처리 - 주문한 시공사(구매자) 본인만
 	@PostMapping("/{orderId}/payment")
-	public ResponseEntity<ApiResponse<Void>> completePayment(@PathVariable Long orderId) {
-		orderService.completePayment(orderId);
+	public ResponseEntity<ApiResponse<Void>> completePayment(@PathVariable Long orderId,
+			Authentication authentication) {
+		orderService.completePayment(orderId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("결제가 완료 처리되었습니다.", null));
 	}
 

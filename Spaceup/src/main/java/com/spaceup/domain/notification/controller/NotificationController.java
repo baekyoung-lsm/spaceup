@@ -1,7 +1,8 @@
 package com.spaceup.domain.notification.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -22,15 +23,20 @@ public class NotificationController {
 
 	private final NotificationService notificationService;
 
+	// ⭐ 페이지네이션 적용
 	@GetMapping("/me")
-	public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(Authentication authentication) {
+	public ResponseEntity<ApiResponse<Page<NotificationResponse>>> getMyNotifications(
+			@PageableDefault(size = 20) Pageable pageable, Authentication authentication) {
 		Long receiverId = getMemberId(authentication);
-		return ResponseEntity.ok(ApiResponse.success("알림 목록 조회 완료", notificationService.getMyNotifications(receiverId)));
+		return ResponseEntity
+				.ok(ApiResponse.success("알림 목록 조회 완료", notificationService.getMyNotifications(receiverId, pageable)));
 	}
 
+	// ⭐ 본인 알림만 읽음 처리 가능
 	@PostMapping("/{notificationId}/read")
-	public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable Long notificationId) {
-		notificationService.markAsRead(notificationId);
+	public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable Long notificationId,
+			Authentication authentication) {
+		notificationService.markAsRead(notificationId, getMemberId(authentication));
 		return ResponseEntity.ok(ApiResponse.success("알림을 읽음 처리했습니다.", null));
 	}
 

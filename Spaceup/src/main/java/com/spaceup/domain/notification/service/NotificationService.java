@@ -1,8 +1,7 @@
 package com.spaceup.domain.notification.service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +11,7 @@ import com.spaceup.domain.notification.dto.NotificationResponse;
 import com.spaceup.domain.notification.entity.Notification;
 import com.spaceup.domain.notification.entity.NotificationType;
 import com.spaceup.domain.notification.repository.NotificationRepository;
+import com.spaceup.global.error.ForbiddenAccessException;
 import com.spaceup.global.error.MemberNotFoundException;
 import com.spaceup.global.error.NotificationNotFoundException;
 
@@ -40,21 +40,26 @@ public class NotificationService {
 		return notification.getId();
 	}
 
-	// ⭐ PDF "알림센터" 화면 목록 (로그인한 본인 알림, 최신순)
-	public List<NotificationResponse> getMyNotifications(Long receiverId) {
-		return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(receiverId).stream()
-				.map(NotificationResponse::new).collect(Collectors.toList());
+	// ⭐ PDF "알림센터" 화면 목록 (로그인한 본인 알림, 최신순, 페이지네이션)
+	public Page<NotificationResponse> getMyNotifications(Long receiverId, Pageable pageable) {
+		return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(receiverId, pageable)
+				.map(NotificationResponse::new);
 	}
 
+	// ⭐ 본인 알림만 읽음 처리 가능
 	@Transactional
-	public void markAsRead(Long notificationId) {
-		findNotificationOrThrow(notificationId).markAsRead();
+	public void markAsRead(Long notificationId, Long receiverId) {
+		Notification notification = findNotificationOrThrow(notificationId);
+		if (!notification.getReceiver().getId().equals(receiverId)) {
+			throw new ForbiddenAccessException("본인 알림만 읽음 처리할 수 있습니다.");
+		}
+		notification.markAsRead();
 	}
 
-	// ⭐ PDF "알림센터" 화면의 "모두 읽음" 버튼
+	// ⭐ PDF "알림센터" 화면의 "모두 읽음" 버튼. 안 읽은 것만 조회해서 처리하므로 전체를 다 긁어오지 않습니다.
 	@Transactional
 	public void markAllAsRead(Long receiverId) {
-		notificationRepository.findByReceiverIdOrderByCreatedAtDesc(receiverId).forEach(Notification::markAsRead);
+		notificationRepository.findByReceiverIdAndReadFalse(receiverId).forEach(Notification::markAsRead);
 	}
 
 	private Notification findNotificationOrThrow(Long notificationId) {

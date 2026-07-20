@@ -2,19 +2,24 @@ package com.spaceup.domain.request.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.spaceup.domain.analysis.service.SpaceAnalysisService;
+import com.spaceup.domain.matching.service.MatchingScoreCalculator;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.repository.MemberRepository;
+import com.spaceup.domain.notification.entity.NotificationType;
+import com.spaceup.domain.notification.service.NotificationService;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
 import com.spaceup.domain.request.dto.RequestResponse;
 import com.spaceup.domain.request.entity.Request;
 import com.spaceup.domain.request.entity.RequestStatus;
 import com.spaceup.domain.request.repository.RequestRepository;
+import com.spaceup.global.error.ForbiddenAccessException;
 import com.spaceup.global.error.InvalidStatusTransitionException;
 import com.spaceup.global.error.MemberNotFoundException;
 import com.spaceup.global.error.RequestNotFoundException;
@@ -28,21 +33,28 @@ public class RequestService {
 
 	private final RequestRepository requestRepository;
 	private final MemberRepository memberRepository;
+	private final MatchingScoreCalculator matchingScoreCalculator;
+	private final SpaceAnalysisService spaceAnalysisService;
+	private final NotificationService notificationService;
 
-	// ⭐ PDF "02 임대 정보 입력" 완료 시 호출. 이 시점엔 아직 AI 분석 전이라 spaceAnalysis는 비워둡니다.
-	// (AI 분석 결과는 별도의 applySpaceAnalysis()로 채워 넣습니다 - ML 파이프라인 연동 지점)
+	// ⭐ PDF "02 임대 정보 입력" 완료 시 호출. AI 분석은 domain/analysis 쪽에서 별도로 요청합니다
+	// (SpaceAnalysisService.requestAnalysis - 컨트롤러 레벨에서 이어 호출).
 	@Transactional
 	public Long createRequest(Long landlordId, RequestCreateRequest dto) {
 		Member landlord = memberRepository.findById(landlordId)
 				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 회원 번호입니다: " + landlordId));
 
-		Request request = Request.builder().requestCode(generateRequestCode()).landlord(landlord)
-				.region(dto.getRegion()).propertyType(dto.getPropertyType()).areaM2(dto.getAreaM2())
-				.deposit(dto.getDeposit()).monthlyRent(dto.getMonthlyRent()).targetRent(dto.getTargetRent())
-				.budget(dto.getBudget()).desiredDate(dto.getDesiredDate()).requestedItems(dto.getRequestedItems())
+		Request request = Request.builder().landlord(landlord).region(dto.getRegion())
+				.propertyType(dto.getPropertyType()).areaM2(dto.getAreaM2()).deposit(dto.getDeposit())
+				.monthlyRent(dto.getMonthlyRent()).targetRent(dto.getTargetRent()).budget(dto.getBudget())
+				.desiredDate(dto.getDesiredDate()).requestedItems(dto.getRequestedItems())
 				.status(RequestStatus.NEW).build();
 
+		// ⭐ IDENTITY 전략이라 save() 시점에 DB가 id를 즉시 발급합니다. count()+1 방식과 달리 동시 요청 두 개가
+		// 같은 코드를 받을 수 없어요 (id 자체가 DB가 보장하는 유일값이라서).
 		requestRepository.save(request);
+		request.assignCode(generateRequestCode(request.getId()));
+
 		return request.getId();
 	}
 
@@ -50,41 +62,64 @@ public class RequestService {
 		return new RequestResponse(findRequestOrThrow(requestId));
 	}
 
-	// ⭐ PDF "의뢰 목록" 화면 - 시공사 관점
-	public List<RequestResponse> getRequestsForContractor(Long contractorId) {
-		return requestRepository.findByContractorId(contractorId).stream().map(RequestResponse::new)
-				.collect(Collectors.toList());
+	// ⭐ PDF "의뢰 목록" 화면 - 시공사 관점 (페이지네이션)
+	public Page<RequestResponse> getRequestsForContractor(Long contractorId, Pageable pageable) {
+		return requestRepository.findByContractorId(contractorId, pageable).map(RequestResponse::new);
 	}
 
-	// ⭐ PDF "마이페이지 - 견적 요청 내역" 화면 - 임대인 관점
-	public List<RequestResponse> getRequestsForLandlord(Long landlordId) {
-		return requestRepository.findByLandlordId(landlordId).stream().map(RequestResponse::new)
-				.collect(Collectors.toList());
+	// ⭐ PDF "마이페이지 - 견적 요청 내역" 화면 - 임대인 관점 (페이지네이션)
+	public Page<RequestResponse> getRequestsForLandlord(Long landlordId, Pageable pageable) {
+		return requestRepository.findByLandlordId(landlordId, pageable).map(RequestResponse::new);
 	}
 
-	// ⭐ 임대인이 특정 시공사에게 견적을 요청하는 순간(PDF 08 견적 요청) 시공사가 매칭됩니다.
+	// ⭐ 임대인이 특정 시공사에게 견적을 요청하는 순간(PDF 08 견적 요청) 시공사가 매칭됩니다. 본인이 등록한 의뢰만 배정
+	// 가능하며, 매칭점수 계산 + 알림 발송까지 이 시점에 한꺼번에 처리합니다.
 	@Transactional
-	public void assignContractor(Long requestId, Long contractorId) {
+	public void assignContractor(Long requestId, Long contractorId, Long landlordId) {
 		Request request = findRequestOrThrow(requestId);
+		if (!request.getLandlord().getId().equals(landlordId)) {
+			throw new ForbiddenAccessException("본인이 등록한 의뢰만 시공사를 배정할 수 있습니다.");
+		}
 		Member contractor = memberRepository.findById(contractorId)
 				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 시공사입니다: " + contractorId));
 		request.assignContractor(contractor);
+
+		int score = matchingScoreCalculator.calculate(request, contractorId);
+		spaceAnalysisService.updateMatchingScoreIfExists(requestId, score);
+
+		notificationService.notify(contractorId, NotificationType.REQUEST, "새 의뢰가 도착했습니다",
+				String.format("%s(%s) 의뢰가 배정되었습니다. 매칭 점수 %d점", request.getRequestCode(), request.getRegion(),
+						score));
 	}
 
-	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 승인" 버튼
+	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 승인" 버튼 - 배정받은 시공사 본인만 가능
 	@Transactional
-	public void approve(Long requestId) {
+	public void approve(Long requestId, Long contractorId) {
 		Request request = findRequestOrThrow(requestId);
+		validateAssignedContractor(request, contractorId);
 		validateTransitionable(request, RequestStatus.REVIEWING);
 		request.approve();
+
+		notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 승인되었습니다",
+				String.format("%s 의뢰를 시공사가 승인했습니다. 견적을 확인해 주세요.", request.getRequestCode()));
 	}
 
-	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 거절" 버튼
+	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 거절" 버튼 - 배정받은 시공사 본인만 가능
 	@Transactional
-	public void reject(Long requestId) {
+	public void reject(Long requestId, Long contractorId) {
 		Request request = findRequestOrThrow(requestId);
+		validateAssignedContractor(request, contractorId);
 		validateTransitionable(request, RequestStatus.REVIEWING);
 		request.reject();
+
+		notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 거절되었습니다",
+				String.format("%s 의뢰를 시공사가 거절했습니다.", request.getRequestCode()));
+	}
+
+	private void validateAssignedContractor(Request request, Long contractorId) {
+		if (request.getContractor() == null || !request.getContractor().getId().equals(contractorId)) {
+			throw new ForbiddenAccessException("본인에게 배정된 의뢰만 처리할 수 있습니다.");
+		}
 	}
 
 	private void validateTransitionable(Request request, RequestStatus expected) {
@@ -99,10 +134,10 @@ public class RequestService {
 				.orElseThrow(() -> new RequestNotFoundException("존재하지 않는 의뢰입니다: " + requestId));
 	}
 
-	// ⭐ "REQ-260715-012" 형식: REQ-yyMMdd-일련번호(당일 누적 건수+1을 3자리로)
-	private String generateRequestCode() {
+	// ⭐ "REQ-260715-000042" 형식: REQ-yyMMdd-{DB가 발급한 실제 id 6자리}. id 기반이라 유일성이 DB
+	// 제약조건 수준으로 보장됩니다.
+	private String generateRequestCode(Long id) {
 		String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
-		long todayCount = requestRepository.count() + 1;
-		return String.format("REQ-%s-%03d", datePart, todayCount);
+		return String.format("REQ-%s-%06d", datePart, id);
 	}
 }

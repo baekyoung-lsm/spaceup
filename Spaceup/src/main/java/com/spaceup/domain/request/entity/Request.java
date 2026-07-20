@@ -1,7 +1,6 @@
 package com.spaceup.domain.request.entity;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -80,9 +79,6 @@ public class Request extends BaseTimeEntity {
 	@Column(name = "requested_items", length = 200)
 	private String requestedItems; // 요청 항목 (예: "도배,장판,조명" - 콤마 구분)
 
-	@Embedded
-	private SpaceAnalysis spaceAnalysis; // AI 분석 결과 (방/욕실/이슈태그/매칭점수 등)
-
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private RequestStatus status;
@@ -110,7 +106,9 @@ public class Request extends BaseTimeEntity {
 		this.status = RequestStatus.COMPLETED;
 	}
 
-	public void applySpaceAnalysis(SpaceAnalysis spaceAnalysis) {
-		this.spaceAnalysis = spaceAnalysis;
+	// ⭐ DB가 부여한 auto-increment id를 이용해 사람이 읽는 코드를 나중에 붙일 때 사용 (RequestService 참고 -
+	// count()+1 방식 대신 실제 PK 기반이라 동시 요청에도 코드가 절대 겹치지 않습니다)
+	public void assignCode(String requestCode) {
+		this.requestCode = requestCode;
 	}
 }

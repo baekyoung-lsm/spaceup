@@ -9,6 +9,7 @@ import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.entity.MemberRole;
 import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.global.error.DuplicateMemberException;
+import com.spaceup.global.error.InvalidRoleException;
 import com.spaceup.global.error.MemberNotFoundException;
 import com.spaceup.global.error.WithdrawnMemberException;
 
@@ -24,6 +25,12 @@ public class MemberService {
 
 	@Transactional
 	public Long join(Member member) {
+		// ⭐ ADMIN은 이 공개 API로 만들 수 없습니다 (문서에는 명시돼 있었지만 실제 검증 코드가 빠져 있던 부분이라 추가).
+		// 관리자 계정은 DB에 직접 시딩하거나 별도 내부 전용 절차로 생성해야 합니다.
+		if (member.getRole() == MemberRole.ADMIN) {
+			throw new InvalidRoleException("관리자 계정은 이 API로 가입할 수 없습니다.");
+		}
+
 		validateDuplicateMember(member.getUsername());
 		String encodedPassword = passwordEncoder.encode(member.getPassword());
 
