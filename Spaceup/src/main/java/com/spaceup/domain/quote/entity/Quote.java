@@ -20,6 +20,7 @@ import jakarta.persistence.Table;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.request.entity.Request;
 import com.spaceup.global.entity.BaseTimeEntity;
+import com.spaceup.global.error.InvalidStatusTransitionException;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -27,8 +28,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * ⭐ PDF "견적 작성 / 견적 제안 작성" 화면에 대응합니다. 하나의 Request(의뢰)에는 여러 개의 Quote가 시간에 따라
- * 생길 수 있어 다대일로 연결하고(재견적 이력 관리), 견적 항목(철거/바닥/조명 등)은 QuoteItem으로 분리했습니다.
+ * ⭐ PDF "견적 작성 / 견적 제안 작성" 화면에 대응합니다. 하나의 Request(의뢰)에는 여러 개의 Quote가 시간에 따라 생길
+ * 수 있어 다대일로 연결하고(재견적 이력 관리), 견적 항목(철거/바닥/조명 등)은 QuoteItem으로 분리했습니다.
  */
 @Entity
 @Table(name = "quotes")
@@ -90,16 +91,28 @@ public class Quote extends BaseTimeEntity {
 		item.assignQuote(this);
 	}
 
+	// ⭐ [최종 검토 반영] 기존에는 상태와 무관하게 전이가 성공해서, 이미 REJECTED된 견적을
+	// 다시 ACCEPTED로 바꾸는 것도 가능했습니다. Request 도메인과 동일한 가드 패턴을 적용합니다.
 	public void submit() {
+		validateStatus(QuoteStatus.DRAFT);
 		this.status = QuoteStatus.SUBMITTED;
 	}
 
 	public void accept() {
+		validateStatus(QuoteStatus.SUBMITTED);
 		this.status = QuoteStatus.ACCEPTED;
 	}
 
 	public void reject() {
+		validateStatus(QuoteStatus.SUBMITTED);
 		this.status = QuoteStatus.REJECTED;
+	}
+
+	private void validateStatus(QuoteStatus expected) {
+		if (this.status != expected) {
+			throw new InvalidStatusTransitionException(
+					String.format("현재 상태(%s)에서는 처리할 수 없습니다. 예상 상태: %s", this.status, expected));
+		}
 	}
 
 	// ⭐ 자재비+인건비+부가세-할인 = 최종 견적. 항목/금액이 바뀔 때마다 서비스 레이어에서 호출해 재계산합니다.

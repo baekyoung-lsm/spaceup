@@ -142,4 +142,11 @@ public class GlobalExceptionHandler {
 		log.warn("본인 소유가 아닌 리소스 접근 시도: {}", e.getMessage());
 		return ResponseEntity.status(403).body(ApiResponse.fail(e.getMessage()));
 	}
+
+	// ⭐ [최종 검토 반영] 재고 부족(오버셀 시도) 예외 핸들러. 상태 충돌 성격이라 409로 통일.
+	@ExceptionHandler(InsufficientStockException.class)
+	public ResponseEntity<ApiResponse<Void>> handleInsufficientStockException(InsufficientStockException e) {
+		log.warn("재고 부족: {}", e.getMessage());
+		return ResponseEntity.status(409).body(ApiResponse.fail(e.getMessage()));
+	}
 }

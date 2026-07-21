@@ -23,9 +23,13 @@ public class CommentController {
 
 	private final CommentService commentService;
 
+	// ⭐ [최종 검토 반영] memberId를 request.getMemberId()(클라이언트 입력값) 대신
+	// Authentication(JWT)에서 가져오도록 수정했습니다. (BoardController.write()와 동일한 취약점 수정)
 	@PostMapping("/write")
-	public ResponseEntity<ApiResponse<Void>> writeComment(@Valid @RequestBody BoardCommentRequest request) {
-		commentService.writeComment(request.getBoardId(), request.getMemberId(), request.getContent());
+	public ResponseEntity<ApiResponse<Void>> writeComment(@Valid @RequestBody BoardCommentRequest request,
+			Authentication authentication) {
+		Long memberId = getMemberIdFromAuthentication(authentication);
+		commentService.writeComment(request.getBoardId(), memberId, request.getContent());
 		return ResponseEntity.ok(ApiResponse.success("댓글 등록 성공!", null));
 	}
 

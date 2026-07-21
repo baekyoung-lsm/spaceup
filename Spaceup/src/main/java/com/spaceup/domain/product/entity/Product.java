@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.global.entity.BaseTimeEntity;
+import com.spaceup.global.error.InsufficientStockException;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -76,9 +77,16 @@ public class Product extends BaseTimeEntity {
 	@Column(nullable = false, length = 20)
 	private ProductStatus status;
 
+	// ⭐ [최종 검토 반영] 기존에는 delta가 재고보다 커도 그대로 차감되어 stockQty가 음수가 될 수 있었습니다.
+	// 이제 차감 후 값이 음수가 되면 InsufficientStockException을 던져 오버셀을 막습니다.
 	public void updateStock(int delta) {
-		this.stockQty += delta;
-		if (this.stockQty <= 0) {
+		int newQty = this.stockQty + delta;
+		if (newQty < 0) {
+			throw new InsufficientStockException(
+					String.format("재고가 부족합니다. 현재 재고: %d, 요청 수량: %d", this.stockQty, -delta));
+		}
+		this.stockQty = newQty;
+		if (this.stockQty == 0) {
 			this.status = ProductStatus.SOLD_OUT;
 		} else if (this.status == ProductStatus.SOLD_OUT) {
 			this.status = ProductStatus.ON_SALE; // 재입고되면 다시 판매중으로
