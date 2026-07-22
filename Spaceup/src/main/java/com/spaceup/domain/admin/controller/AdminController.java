@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.spaceup.domain.admin.dto.AdminDashboardResponse;
+import com.spaceup.domain.admin.dto.MemberRevisionRequest;
 import com.spaceup.domain.admin.dto.SystemSettingResponse;
 import com.spaceup.domain.admin.dto.SystemSettingUpdateRequest;
 import com.spaceup.domain.admin.service.AdminService;
@@ -41,7 +42,7 @@ public class AdminController {
 		return ResponseEntity.ok(ApiResponse.success("회원 목록 조회 완료", adminService.getMembers(role, pageable)));
 	}
 
-	// ⭐ PDF "시공사관리 / 자재업체관리" 화면의 승인 대기 목록
+	// ⭐ PDF "시공사관리 / 자재업체관리" 화면의 승인 대기 목록 (PENDING + NEEDS_REVISION)
 	@GetMapping("/members/pending")
 	public ResponseEntity<ApiResponse<List<MemberResponse>>> getPendingApprovals(@RequestParam MemberRole role) {
 		return ResponseEntity.ok(ApiResponse.success("승인 대기 목록 조회 완료", adminService.getPendingApprovals(role)));
@@ -52,6 +53,14 @@ public class AdminController {
 	public ResponseEntity<ApiResponse<Void>> approveMember(@PathVariable Long memberId) {
 		adminService.approveMember(memberId);
 		return ResponseEntity.ok(ApiResponse.success("회원을 승인했습니다.", null));
+	}
+
+	// ⭐ [Figma 반영] PDF "보완 요청" 화면 - 심사 담당자가 보완 사유 + 재제출 기한을 남깁니다.
+	@PostMapping("/members/{memberId}/request-revision")
+	public ResponseEntity<ApiResponse<Void>> requestRevision(@PathVariable Long memberId,
+			@Valid @RequestBody MemberRevisionRequest request) {
+		adminService.requestRevision(memberId, request.getMessage(), request.getDeadline());
+		return ResponseEntity.ok(ApiResponse.success("보완을 요청했습니다.", null));
 	}
 
 	// ⭐ PDF "시스템설정" 화면 조회 (예: /api/admin/settings/COMMISSION_RATE)

@@ -40,6 +40,15 @@ public class Member {
 	@Column(nullable = false, length = 30)
 	private String name;
 
+	// ⭐ [Figma 반영] "회원가입 - 휴대폰 인증" 단계용 필드. 실제 SMS 발송/검증 연동은 아직 없고(외부 SMS
+	// 벤더 선정이 필요한 별도 작업), 여기서는 번호 저장 + 수동 인증완료 플래그만 제공합니다.
+	@Column(name = "phone_number", length = 20)
+	private String phoneNumber;
+
+	@Builder.Default
+	@Column(name = "phone_verified", nullable = false)
+	private boolean phoneVerified = false;
+
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt; // 가입 일시
 
@@ -47,11 +56,28 @@ public class Member {
 	@Column(nullable = false, length = 20)
 	private MemberRole role; // ⭐ 로그인 유형(임대인/시공사/자재업체/관리자) - PDF 로그인 화면의 역할 탭에 대응
 
-	// ⭐ 시공사/자재업체는 관리자 승인 전까지 활동이 제한됩니다(PDF 관리자 화면의 "승인/검토중/심사중" 상태).
-	// 임대인/관리자는 가입 즉시 true로 취급하고, CONTRACTOR/MATERIAL_VENDOR만 false로 시작합니다.
+	// ⭐ [Figma 반영] 기존 boolean approved를 심사 워크플로우(대기/보완요청/승인)로 승격했습니다.
+	// LANDLORD/ADMIN은 가입 즉시 APPROVED, CONTRACTOR/MATERIAL_VENDOR는 PENDING으로 시작합니다.
 	@Builder.Default
-	@Column(nullable = false)
-	private boolean approved = true;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "approval_status", nullable = false, length = 20)
+	private MemberApprovalStatus approvalStatus = MemberApprovalStatus.APPROVED;
+
+	// ⭐ 심사 신청번호 (예: ON-260715-018) - 가입 시 발급
+	@Column(name = "application_number", length = 30)
+	private String applicationNumber;
+
+	// ⭐ 승인번호 (예: AP-260718-004) - 관리자가 승인하는 시점에 발급
+	@Column(name = "approval_number", length = 30)
+	private String approvalNumber;
+
+	// ⭐ 보완 요청 사유 (관리자가 NEEDS_REVISION 처리 시 입력)
+	@Column(name = "revision_message", length = 500)
+	private String revisionMessage;
+
+	// ⭐ 보완 자료 재제출 기한
+	@Column(name = "revision_deadline")
+	private LocalDateTime revisionDeadline;
 
 	@Builder.Default
 	@Column(nullable = false)
@@ -71,9 +97,39 @@ public class Member {
 		this.name = name;
 	}
 
-	// ⭐ 관리자 승인 처리(시공사/자재업체 전용). 추후 domain/admin 서비스에서 호출합니다.
-	public void approve() {
-		this.approved = true;
+	// ⭐ [Figma 반영] 마이페이지 - 계정설정에서 휴대폰 번호를 바꾸면 재인증이 필요하므로 verified를 초기화합니다.
+	public void updatePhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
+		this.phoneVerified = false;
+	}
+
+	// ⭐ 실제 SMS OTP 검증 로직이 붙기 전까지 쓰는 수동 인증완료 처리. OTP 연동 시 이 메서드를 그 결과로 호출하면 됩니다.
+	public void verifyPhone() {
+		this.phoneVerified = true;
+	}
+
+	public void assignApplicationNumber(String applicationNumber) {
+		this.applicationNumber = applicationNumber;
+	}
+
+	// ⭐ 관리자 승인 처리(시공사/자재업체 전용). 승인번호를 발급하고 보완요청 관련 필드는 비웁니다.
+	public void approve(String approvalNumber) {
+		this.approvalStatus = MemberApprovalStatus.APPROVED;
+		this.approvalNumber = approvalNumber;
+		this.revisionMessage = null;
+		this.revisionDeadline = null;
+	}
+
+	// ⭐ [Figma 반영] "보완 요청" 처리 - 심사 담당자가 사유와 재제출 기한을 남깁니다.
+	public void requestRevision(String message, LocalDateTime deadline) {
+		this.approvalStatus = MemberApprovalStatus.NEEDS_REVISION;
+		this.revisionMessage = message;
+		this.revisionDeadline = deadline;
+	}
+
+	// ⭐ [Figma 반영] 보완 요청을 받은 회원이 자료를 다시 제출하면 심사 대기 상태로 되돌립니다.
+	public void resubmit() {
+		this.approvalStatus = MemberApprovalStatus.PENDING;
 	}
 
 	/**

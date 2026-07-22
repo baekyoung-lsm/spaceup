@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.spaceup.domain.member.entity.Member;
+import com.spaceup.domain.member.entity.MemberApprovalStatus;
 import com.spaceup.domain.member.entity.MemberRole;
 
 @Repository
@@ -21,8 +22,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 	// ⭐ PDF "회원관리(관리자)" - 역할별 전체 목록 (페이지네이션)
 	Page<Member> findByRole(MemberRole role, Pageable pageable);
 
-	// ⭐ PDF "시공사관리/자재업체관리(관리자)" - 승인 대기 큐. 보통 규모가 크지 않아 List로 유지합니다.
-	List<Member> findByRoleAndApproved(MemberRole role, boolean approved);
+	// ⭐ [최종 검토 반영] 기존 findByRoleAndApproved(boolean)를 승인 워크플로우(enum) 기준으로 교체했습니다.
+	// PDF "시공사관리/자재업체관리(관리자)" - 심사 대기(PENDING) 또는 보완요청(NEEDS_REVISION) 큐.
+	List<Member> findByRoleAndApprovalStatus(MemberRole role, MemberApprovalStatus approvalStatus);
 
 	long countByRole(MemberRole role);
+
+	// ⭐ 대시보드용: 역할 + 승인상태 조합 카운트 (예: 승인 대기 중인 시공사 수)
+	long countByRoleAndApprovalStatus(MemberRole role, MemberApprovalStatus approvalStatus);
 }

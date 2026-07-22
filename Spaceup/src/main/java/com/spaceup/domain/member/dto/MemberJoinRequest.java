@@ -25,8 +25,6 @@ public class MemberJoinRequest {
 	private String username;
 
 	@NotBlank(message = "비밀번호는 필수 입력 사항입니다.")
-	// ⭐ 교정 포인트: 특수기호 패턴 내부의 \d 자리를 자바 엔진 규격에 맞게 \\d 로 완벽하게 2개씩 겹쳐 써 주어야 Swagger
-	// 분석기가 정상 가동됩니다.
 	@Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[$@$!%*#?&])[A-Za-z\\d$@$!%*#?&]{8,16}$", message = "비밀번호는 8자 이상 16자 이하의 영문, 숫자, 특수문자를 조합해야 합니다.")
 	private String password;
 
@@ -37,4 +35,9 @@ public class MemberJoinRequest {
 	@NotBlank(message = "이름은 필수 입력 사항입니다.")
 	@Size(max = 20, message = "이름은 20자 이하로 입력해 주세요.")
 	private String name;
+
+	// ⭐ [Figma 반영] 회원가입 1단계(계정) 화면에 이미 휴대폰 번호 입력칸이 있고, 2단계에서 이 번호로 인증합니다.
+	@NotBlank(message = "휴대폰 번호는 필수 입력 사항입니다.")
+	@Pattern(regexp = "^01[0-9]-\\d{3,4}-\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다. 예: 010-1234-5678")
+	private String phoneNumber;
 }

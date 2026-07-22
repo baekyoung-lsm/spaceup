@@ -24,8 +24,7 @@ public class SpaceAnalysisService {
 	private final RequestRepository requestRepository;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 직후 호출 지점. PENDING 상태로 분석 레코드를 먼저 만들어두고, ML 파이프라인에
-	// 비동기로 분석을 맡긴 뒤 submitResult()로 콜백을 받는 구조입니다. (RequestService.createRequest() 이후
-	// RequestController에서 이 메서드를 이어 호출하도록 연결하면 됩니다 - 아직 자동 연결은 안 해뒀습니다)
+	// 비동기로 분석을 맡긴 뒤 submitResult()로 콜백을 받는 구조입니다.
 	@Transactional
 	public Long requestAnalysis(Long requestId) {
 		Request request = requestRepository.findById(requestId)
@@ -37,11 +36,14 @@ public class SpaceAnalysisService {
 	}
 
 	// ⭐ ML 파이프라인 콜백 또는 관리자 수동 보정
+	// ⭐ [Figma 반영] 예상견적 범위 + ROI(예상 월세상승/회수기간) 필드를 함께 반영하도록 확장
 	@Transactional
 	public void submitResult(Long requestId, SpaceAnalysisResultRequest dto) {
 		SpaceAnalysis analysis = findByRequestOrThrow(requestId);
 		analysis.completeWith(dto.getRoomCount(), dto.getBathroomCount(), dto.getHasBalcony(), dto.getKitchenType(),
-				dto.getSpaceScore(), dto.getConditionScore(), dto.getIssueTags());
+				dto.getSpaceScore(), dto.getConditionScore(), dto.getIssueTags(), dto.getEstimatedQuoteMin(),
+				dto.getEstimatedQuoteMax(), dto.getExpectedRentIncreaseMin(), dto.getExpectedRentIncreaseMax(),
+				dto.getPaybackPeriodMonthsMin(), dto.getPaybackPeriodMonthsMax());
 	}
 
 	@Transactional

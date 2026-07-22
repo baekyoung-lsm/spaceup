@@ -1,5 +1,6 @@
 package com.spaceup.domain.quote.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,6 +19,9 @@ public class QuoteResponse {
 	private final Integer durationDays;
 	private final Long totalAmount;
 	private final QuoteStatus status;
+	private final LocalDate validUntil;
+	private final String revisionRequestNote;
+	private final Integer revisionCount;
 	private final List<ItemView> items;
 
 	public QuoteResponse(Quote quote) {
@@ -29,6 +33,9 @@ public class QuoteResponse {
 		this.durationDays = quote.getDurationDays();
 		this.totalAmount = quote.getTotalAmount();
 		this.status = quote.getStatus();
+		this.validUntil = quote.getValidUntil();
+		this.revisionRequestNote = quote.getRevisionRequestNote();
+		this.revisionCount = quote.getRevisionCount();
 		this.items = quote.getItems().stream()
 				.map(item -> new ItemView(item.getCategory(), item.getDescription(), item.getAmount()))
 				.collect(Collectors.toList());

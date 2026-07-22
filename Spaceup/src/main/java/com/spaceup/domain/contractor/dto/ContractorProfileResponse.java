@@ -17,6 +17,14 @@ public class ContractorProfileResponse {
 	private final String introduction;
 	private final Double rating;
 	private final Integer completedProjectCount;
+	private final String managerPosition;
+	private final String consultationHours;
+	private final boolean profilePublic;
+	private final boolean contactPublic;
+	private final boolean specialtyPublic;
+	private final boolean regionPublic;
+	private final boolean portfolioPublic;
+	private final boolean availableForConsult;
 
 	public ContractorProfileResponse(ContractorProfile profile) {
 		this.id = profile.getId();
@@ -30,5 +38,13 @@ public class ContractorProfileResponse {
 		this.introduction = profile.getIntroduction();
 		this.rating = profile.getRating();
 		this.completedProjectCount = profile.getCompletedProjectCount();
+		this.managerPosition = profile.getManagerPosition();
+		this.consultationHours = profile.getConsultationHours();
+		this.profilePublic = profile.isProfilePublic();
+		this.contactPublic = profile.isContactPublic();
+		this.specialtyPublic = profile.isSpecialtyPublic();
+		this.regionPublic = profile.isRegionPublic();
+		this.portfolioPublic = profile.isPortfolioPublic();
+		this.availableForConsult = profile.isAvailableForConsult();
 	}
 }

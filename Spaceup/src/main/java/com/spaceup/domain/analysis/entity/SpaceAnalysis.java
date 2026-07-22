@@ -70,9 +70,32 @@ public class SpaceAnalysis extends BaseTimeEntity {
 	@Column(name = "matching_score")
 	private Integer matchingScore; // 시공사 매칭 점수 (0~100) - domain/matching 계산 결과 저장
 
+	// ⭐ [Figma 반영] "의뢰 상세 - AI분석" 탭의 "사용자가 받은 예상 견적" 범위 (예: 450만~550만원)
+	@Column(name = "estimated_quote_min")
+	private Long estimatedQuoteMin;
+
+	@Column(name = "estimated_quote_max")
+	private Long estimatedQuoteMax;
+
+	// ⭐ [Figma 반영] "ROI 요약" 카드. 현재 월세는 Request.monthlyRent를 그대로 참조해서 쓰고(중복 저장 안 함),
+	// 여기서는 AI가 계산한 예상 상승분/회수기간만 보관합니다.
+	@Column(name = "expected_rent_increase_min")
+	private Long expectedRentIncreaseMin;
+
+	@Column(name = "expected_rent_increase_max")
+	private Long expectedRentIncreaseMax;
+
+	@Column(name = "payback_period_months_min")
+	private Integer paybackPeriodMonthsMin;
+
+	@Column(name = "payback_period_months_max")
+	private Integer paybackPeriodMonthsMax;
+
 	// ⭐ ML 파이프라인 콜백이 이 메서드로 결과를 채웁니다.
 	public void completeWith(Integer roomCount, Integer bathroomCount, Boolean hasBalcony, String kitchenType,
-			Integer spaceScore, Integer conditionScore, String issueTags) {
+			Integer spaceScore, Integer conditionScore, String issueTags, Long estimatedQuoteMin,
+			Long estimatedQuoteMax, Long expectedRentIncreaseMin, Long expectedRentIncreaseMax,
+			Integer paybackPeriodMonthsMin, Integer paybackPeriodMonthsMax) {
 		this.roomCount = roomCount;
 		this.bathroomCount = bathroomCount;
 		this.hasBalcony = hasBalcony;
@@ -80,6 +103,12 @@ public class SpaceAnalysis extends BaseTimeEntity {
 		this.spaceScore = spaceScore;
 		this.conditionScore = conditionScore;
 		this.issueTags = issueTags;
+		this.estimatedQuoteMin = estimatedQuoteMin;
+		this.estimatedQuoteMax = estimatedQuoteMax;
+		this.expectedRentIncreaseMin = expectedRentIncreaseMin;
+		this.expectedRentIncreaseMax = expectedRentIncreaseMax;
+		this.paybackPeriodMonthsMin = paybackPeriodMonthsMin;
+		this.paybackPeriodMonthsMax = paybackPeriodMonthsMax;
 		this.status = AnalysisStatus.COMPLETED;
 	}
 

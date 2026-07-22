@@ -18,6 +18,12 @@ public class SpaceAnalysisResponse {
 	private final Integer conditionScore;
 	private final String issueTags;
 	private final Integer matchingScore;
+	private final Long estimatedQuoteMin;
+	private final Long estimatedQuoteMax;
+	private final Long expectedRentIncreaseMin;
+	private final Long expectedRentIncreaseMax;
+	private final Integer paybackPeriodMonthsMin;
+	private final Integer paybackPeriodMonthsMax;
 
 	public SpaceAnalysisResponse(SpaceAnalysis analysis) {
 		this.id = analysis.getId();
@@ -31,5 +37,11 @@ public class SpaceAnalysisResponse {
 		this.conditionScore = analysis.getConditionScore();
 		this.issueTags = analysis.getIssueTags();
 		this.matchingScore = analysis.getMatchingScore();
+		this.estimatedQuoteMin = analysis.getEstimatedQuoteMin();
+		this.estimatedQuoteMax = analysis.getEstimatedQuoteMax();
+		this.expectedRentIncreaseMin = analysis.getExpectedRentIncreaseMin();
+		this.expectedRentIncreaseMax = analysis.getExpectedRentIncreaseMax();
+		this.paybackPeriodMonthsMin = analysis.getPaybackPeriodMonthsMin();
+		this.paybackPeriodMonthsMax = analysis.getPaybackPeriodMonthsMax();
 	}
 }

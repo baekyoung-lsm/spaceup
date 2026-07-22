@@ -26,7 +26,14 @@ public class RequestCreateRequest {
 	private Long deposit;
 	private Long monthlyRent;
 	private Long targetRent;
+
+	// ⭐ (레거시) 단일 예산값 - 이전 클라이언트 호환용. 신규 클라이언트는 budgetMin/budgetMax를 사용하세요.
 	private Long budget;
+
+	// ⭐ [Figma 반영] "집주인 예산" 범위 입력 (예: 300~500만원)
+	private Long budgetMin;
+	private Long budgetMax;
+
 	private String desiredDate;
 	private String requestedItems;
 }

@@ -1,5 +1,6 @@
 package com.spaceup.domain.quote.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,6 +31,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class QuoteService {
+
+	// ⭐ [Figma 반영] 기본 유효기간: 발송일로부터 14일 (화면 예시상 07.15 발송 → 07.31 만료와 유사한 기본값)
+	private static final int DEFAULT_VALIDITY_DAYS = 14;
 
 	private final QuoteRepository quoteRepository;
 	private final RequestRepository requestRepository;
@@ -62,11 +66,15 @@ public class QuoteService {
 	}
 
 	// ⭐ PDF "견적 제안 보내기" 버튼 - 작성한 시공사 본인만 발송 가능. 임대인에게 알림
+	// ⭐ [Figma 반영] 발송 시점에 유효기간(validUntil)이 없으면 기본 14일로 채웁니다.
 	@Transactional
 	public void submit(Long quoteId, Long contractorId) {
 		Quote quote = findQuoteOrThrow(quoteId);
 		validateContractorOwnership(quote, contractorId);
 		quote.submit();
+		if (quote.getValidUntil() == null) {
+			quote.extendValidUntil(LocalDate.now().plusDays(DEFAULT_VALIDITY_DAYS));
+		}
 
 		notificationService.notify(quote.getRequest().getLandlord().getId(), NotificationType.QUOTE, "새 견적이 도착했습니다",
 				String.format("%s님이 %,d원 견적을 보냈습니다.", quote.getContractor().getName(), quote.getTotalAmount()));
@@ -91,6 +99,28 @@ public class QuoteService {
 
 		notificationService.notify(quote.getContractor().getId(), NotificationType.QUOTE, "견적이 거절되었습니다",
 				String.format("%s 견적이 거절되었습니다.", quote.getTitle()));
+	}
+
+	// ⭐ [Figma 반영] "유효기간 연장" 화면 - 작성한 시공사 본인만 가능
+	@Transactional
+	public void extendValidity(Long quoteId, Long contractorId, LocalDate newValidUntil) {
+		Quote quote = findQuoteOrThrow(quoteId);
+		validateContractorOwnership(quote, contractorId);
+		quote.extendValidUntil(newValidUntil);
+
+		notificationService.notify(quote.getRequest().getLandlord().getId(), NotificationType.QUOTE, "견적 유효기간이 연장되었습니다",
+				String.format("%s 견적의 유효기간이 %s까지 연장되었습니다.", quote.getTitle(), newValidUntil));
+	}
+
+	// ⭐ [Figma 반영] "보낸 견적 상세 - 수정 요청" 화면 - 해당 의뢰의 임대인 본인만 가능. 시공사에게 알림
+	@Transactional
+	public void requestRevision(Long quoteId, Long landlordId, String note) {
+		Quote quote = findQuoteOrThrow(quoteId);
+		validateLandlordOwnership(quote, landlordId);
+		quote.requestRevision(note);
+
+		notificationService.notify(quote.getContractor().getId(), NotificationType.QUOTE, "견적 수정 요청이 도착했습니다",
+				String.format("%s 견적에 대한 수정 요청: %s", quote.getTitle(), note));
 	}
 
 	public QuoteResponse getQuote(Long quoteId) {

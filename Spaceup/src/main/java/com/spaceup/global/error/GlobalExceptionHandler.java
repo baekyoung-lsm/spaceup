@@ -149,4 +149,11 @@ public class GlobalExceptionHandler {
 		log.warn("재고 부족: {}", e.getMessage());
 		return ResponseEntity.status(409).body(ApiResponse.fail(e.getMessage()));
 	}
+
+	// ⭐ [Figma 반영] 포트폴리오 없음 예외 핸들러
+	@ExceptionHandler(PortfolioNotFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handlePortfolioNotFoundException(PortfolioNotFoundException e) {
+		log.warn("포트폴리오 조회 실패: {}", e.getMessage());
+		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
+	}
 }

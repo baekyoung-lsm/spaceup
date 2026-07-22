@@ -66,6 +66,38 @@ public class ContractorProfile extends BaseTimeEntity {
 	@Column(name = "completed_project_count")
 	private Integer completedProjectCount = 0;
 
+	// ===== ⭐ [Figma 반영] "담당자 정보" 화면 =====
+	@Column(name = "manager_position", length = 30)
+	private String managerPosition; // 직책 (예: "영업 담당자")
+
+	@Column(name = "consultation_hours", length = 50)
+	private String consultationHours; // 상담 가능 시간 (예: "평일 09:00-18:00")
+
+	// ===== ⭐ [Figma 반영] "업체 공개 설정" 화면 - 6개 토글. 전부 기본값 true(공개)로 시작합니다. =====
+	@Builder.Default
+	@Column(name = "profile_public", nullable = false)
+	private boolean profilePublic = true; // 업체 프로필 공개(업체명/대표 정보)
+
+	@Builder.Default
+	@Column(name = "contact_public", nullable = false)
+	private boolean contactPublic = true; // 담당자 연락처 공개
+
+	@Builder.Default
+	@Column(name = "specialty_public", nullable = false)
+	private boolean specialtyPublic = true; // 전문 분야 공개
+
+	@Builder.Default
+	@Column(name = "region_public", nullable = false)
+	private boolean regionPublic = true; // 시공 가능 지역 공개
+
+	@Builder.Default
+	@Column(name = "portfolio_public", nullable = false)
+	private boolean portfolioPublic = true; // 포트폴리오 공개
+
+	@Builder.Default
+	@Column(name = "available_for_consult", nullable = false)
+	private boolean availableForConsult = true; // 신규 상담 가능 상태
+
 	public void updateProfile(String businessRegistrationNumber, String companyName, String activityRegions,
 			String specialties, String portfolioUrl, String introduction) {
 		this.businessRegistrationNumber = businessRegistrationNumber;
@@ -74,6 +106,23 @@ public class ContractorProfile extends BaseTimeEntity {
 		this.specialties = specialties;
 		this.portfolioUrl = portfolioUrl;
 		this.introduction = introduction;
+	}
+
+	// ⭐ [Figma 반영] "담당자 정보 저장" 버튼
+	public void updateManagerInfo(String managerPosition, String consultationHours) {
+		this.managerPosition = managerPosition;
+		this.consultationHours = consultationHours;
+	}
+
+	// ⭐ [Figma 반영] "공개 설정 저장" 버튼 - 6개 토글 일괄 저장
+	public void updateDisclosureSettings(boolean profilePublic, boolean contactPublic, boolean specialtyPublic,
+			boolean regionPublic, boolean portfolioPublic, boolean availableForConsult) {
+		this.profilePublic = profilePublic;
+		this.contactPublic = contactPublic;
+		this.specialtyPublic = specialtyPublic;
+		this.regionPublic = regionPublic;
+		this.portfolioPublic = portfolioPublic;
+		this.availableForConsult = availableForConsult;
 	}
 
 	// ⭐ 시공 완료(ScheduleEvent.complete()) 시점에 호출해 실적을 누적하는 확장 지점

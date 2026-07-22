@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import com.spaceup.domain.analysis.service.SpaceAnalysisService;
 import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
+import com.spaceup.domain.request.dto.RequestRejectRequest;
 import com.spaceup.domain.request.dto.RequestResponse;
 import com.spaceup.domain.request.service.RequestService;
 import com.spaceup.global.util.ApiResponse;
@@ -75,9 +76,11 @@ public class RequestController {
 	}
 
 	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 거절" 버튼 (배정받은 시공사 본인만)
+	// ⭐ [Figma 반영] "거절 사유" 화면 입력값(reason/detail)을 함께 받도록 변경
 	@PostMapping("/{requestId}/reject")
-	public ResponseEntity<ApiResponse<Void>> reject(@PathVariable Long requestId, Authentication authentication) {
-		requestService.reject(requestId, getMemberId(authentication));
+	public ResponseEntity<ApiResponse<Void>> reject(@PathVariable Long requestId,
+			@Valid @RequestBody RequestRejectRequest request, Authentication authentication) {
+		requestService.reject(requestId, getMemberId(authentication), request.getReason(), request.getDetail());
 		return ResponseEntity.ok(ApiResponse.success("의뢰를 거절했습니다.", null));
 	}
 

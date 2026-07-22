@@ -1,5 +1,6 @@
 package com.spaceup.domain.quote.entity;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +21,6 @@ import jakarta.persistence.Table;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.request.entity.Request;
 import com.spaceup.global.entity.BaseTimeEntity;
-import com.spaceup.global.error.InvalidStatusTransitionException;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -28,8 +28,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * ⭐ PDF "견적 작성 / 견적 제안 작성" 화면에 대응합니다. 하나의 Request(의뢰)에는 여러 개의 Quote가 시간에 따라 생길
- * 수 있어 다대일로 연결하고(재견적 이력 관리), 견적 항목(철거/바닥/조명 등)은 QuoteItem으로 분리했습니다.
+ * ⭐ PDF "견적 작성 / 견적 제안 작성" 화면에 대응합니다. 하나의 Request(의뢰)에는 여러 개의 Quote가 시간에 따라
+ * 생길 수 있어 다대일로 연결하고(재견적 이력 관리), 견적 항목(철거/바닥/조명 등)은 QuoteItem으로 분리했습니다.
  */
 @Entity
 @Table(name = "quotes")
@@ -78,6 +78,19 @@ public class Quote extends BaseTimeEntity {
 	@Column(name = "detail_content", length = 500)
 	private String detailContent; // 견적 상세 내용 (작업범위/자재종류/추가비용 조건 등)
 
+	// ⭐ [Figma 반영] "보낸 견적" 화면의 "유효 07.31" 표시 + "유효기간 연장" 기능용
+	@Column(name = "valid_until")
+	private LocalDate validUntil;
+
+	// ⭐ [Figma 반영] "보낸 견적 상세"의 "수정 요청" 메모 - 임대인이 남기고 시공사가 확인 후 수정 견적을 작성
+	@Column(name = "revision_request_note", length = 500)
+	private String revisionRequestNote;
+
+	// ⭐ [Figma 반영] "v1 - 07.14, v2 - 07.15" 같은 버전 표시용 - 수정될 때마다 1씩 증가
+	@Builder.Default
+	@Column(name = "revision_count", nullable = false)
+	private Integer revisionCount = 1;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private QuoteStatus status;
@@ -110,9 +123,25 @@ public class Quote extends BaseTimeEntity {
 
 	private void validateStatus(QuoteStatus expected) {
 		if (this.status != expected) {
-			throw new InvalidStatusTransitionException(
+			throw new com.spaceup.global.error.InvalidStatusTransitionException(
 					String.format("현재 상태(%s)에서는 처리할 수 없습니다. 예상 상태: %s", this.status, expected));
 		}
+	}
+
+	// ⭐ [Figma 반영] "유효기간 연장" 화면 - 시공사만 호출 가능(QuoteService에서 소유권 검증)
+	public void extendValidUntil(LocalDate newValidUntil) {
+		this.validUntil = newValidUntil;
+	}
+
+	// ⭐ [Figma 반영] "보낸 견적 상세 - 수정 요청" 화면 - 임대인이 요청한 수정 메모를 남깁니다.
+	public void requestRevision(String note) {
+		this.revisionRequestNote = note;
+	}
+
+	// ⭐ [Figma 반영] 수정 견적을 다시 작성/발송하면 버전을 올리고 요청 메모를 비웁니다.
+	public void markRevised() {
+		this.revisionCount++;
+		this.revisionRequestNote = null;
 	}
 
 	// ⭐ 자재비+인건비+부가세-할인 = 최종 견적. 항목/금액이 바뀔 때마다 서비스 레이어에서 호출해 재계산합니다.

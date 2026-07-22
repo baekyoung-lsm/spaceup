@@ -9,6 +9,7 @@ import com.spaceup.domain.member.dto.LoginRequest;
 import com.spaceup.domain.member.dto.MemberJoinRequest;
 import com.spaceup.domain.member.dto.MemberResponse;
 import com.spaceup.domain.member.dto.MemberUpdateRequest;
+import com.spaceup.domain.member.dto.PhoneUpdateRequest;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.member.service.MemberService;
@@ -29,7 +30,8 @@ public class MemberController {
 	@PostMapping("/join")
 	public ResponseEntity<ApiResponse<Void>> join(@Valid @RequestBody MemberJoinRequest request) {
 		Member member = Member.builder().username(request.getUsername()).password(request.getPassword())
-				.email(request.getEmail()).name(request.getName()).role(request.getRole()).build();
+				.email(request.getEmail()).name(request.getName()).phoneNumber(request.getPhoneNumber())
+				.role(request.getRole()).build();
 		memberService.join(member);
 		return ResponseEntity.ok(ApiResponse.success("회원가입이 완벽하게 완료되었습니다.", null));
 	}
@@ -57,6 +59,24 @@ public class MemberController {
 		}
 		memberService.updateProfile(memberId, request.getEmail(), request.getName());
 		return ResponseEntity.ok(ApiResponse.success("회원정보가 수정되었습니다.", null));
+	}
+
+	// ⭐ [Figma 반영] 마이페이지 - 계정설정의 "휴대폰 번호 변경". 실제 SMS 재인증은 아직 없어 변경 즉시
+	// phoneVerified=false로만 표시됩니다 (OTP 연동 전까지의 임시 동작).
+	@PatchMapping("/me/phone")
+	public ResponseEntity<ApiResponse<Void>> updatePhone(@Valid @RequestBody PhoneUpdateRequest request,
+			Authentication authentication) {
+		Long memberId = getMemberIdFromAuthentication(authentication);
+		memberService.updatePhoneNumber(memberId, request.getPhoneNumber());
+		return ResponseEntity.ok(ApiResponse.success("휴대폰 번호가 변경되었습니다. 재인증이 필요합니다.", null));
+	}
+
+	// ⭐ [Figma 반영] "보완 요청" 화면의 "보완 자료 재제출" 버튼 - 본인만, NEEDS_REVISION 상태에서만 가능
+	@PostMapping("/me/resubmit")
+	public ResponseEntity<ApiResponse<Void>> resubmit(Authentication authentication) {
+		Long memberId = getMemberIdFromAuthentication(authentication);
+		memberService.resubmit(memberId);
+		return ResponseEntity.ok(ApiResponse.success("재제출이 완료되었습니다. 심사 중입니다.", null));
 	}
 
 	@DeleteMapping("/{memberId}")

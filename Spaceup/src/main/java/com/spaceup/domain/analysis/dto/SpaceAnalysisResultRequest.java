@@ -17,4 +17,14 @@ public class SpaceAnalysisResultRequest {
 	private Integer spaceScore;
 	private Integer conditionScore;
 	private String issueTags; // "조명 어두움,바닥 노후화" 콤마 구분
+
+	// ⭐ [Figma 반영] "사용자가 받은 예상 견적" 범위
+	private Long estimatedQuoteMin;
+	private Long estimatedQuoteMax;
+
+	// ⭐ [Figma 반영] "ROI 요약" - 예상 월세 상승 범위 + 예상 회수 기간(개월)
+	private Long expectedRentIncreaseMin;
+	private Long expectedRentIncreaseMax;
+	private Integer paybackPeriodMonthsMin;
+	private Integer paybackPeriodMonthsMax;
 }

@@ -1,5 +1,7 @@
 package com.spaceup.domain.request.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -70,8 +72,16 @@ public class Request extends BaseTimeEntity {
 	@Column(name = "target_rent")
 	private Long targetRent; // 목표 월세(원)
 
+	// ⭐ [Figma 반영] "의뢰 목록" 화면엔 예산이 "300~500만원" 같은 범위로 표시됩니다. 기존 단일 budget 필드는
+	// 하위호환을 위해 남겨두고, 범위 표현이 필요한 화면은 아래 budgetMin/budgetMax를 사용하세요.
 	@Column(name = "budget")
-	private Long budget; // 리모델링 예산(원)
+	private Long budget; // (레거시) 리모델링 예산 단일값 - budgetMin/budgetMax 사용을 권장합니다.
+
+	@Column(name = "budget_min")
+	private Long budgetMin; // 집주인 예산 범위 하한(원)
+
+	@Column(name = "budget_max")
+	private Long budgetMax; // 집주인 예산 범위 상한(원)
 
 	@Column(name = "desired_date")
 	private String desiredDate; // 희망 시공/입주 일정 (yyyy-MM-dd)
@@ -82,6 +92,24 @@ public class Request extends BaseTimeEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private RequestStatus status;
+
+	// ⭐ [Figma 반영] "거절 사유" 화면 - 시공사가 거절할 때 사유를 선택/입력합니다.
+	@Enumerated(EnumType.STRING)
+	@Column(name = "reject_reason", length = 30)
+	private RejectReason rejectReason;
+
+	@Column(name = "reject_reason_detail", length = 300)
+	private String rejectReasonDetail; // rejectReason=OTHER일 때 직접 입력한 사유
+
+	// ⭐ [Figma 반영] "7일 자동 취소 정책" - 마지막 유효 활동 시각. 채팅/일정등록/방문완료/견적작성 등 활동이 있을 때마다
+	// touch()로 갱신하고, 배치(RequestAutoCancelScheduler)가 이 값을 기준으로 168시간 경과 시 자동 취소합니다.
+	@Column(name = "last_activity_at")
+	private LocalDateTime lastActivityAt;
+
+	// ⭐ 144시간(D-1) 알림을 중복 발송하지 않기 위한 플래그
+	@Builder.Default
+	@Column(name = "warning_sent", nullable = false)
+	private boolean warningSent = false;
 
 	// ===== 상태 전이 메서드 (도메인 로직은 서비스가 아니라 엔티티가 책임지도록) =====
 
@@ -94,8 +122,11 @@ public class Request extends BaseTimeEntity {
 		this.status = RequestStatus.QUOTE_REQUESTED;
 	}
 
-	public void reject() {
+	// ⭐ [Figma 반영] 거절 사유를 함께 기록하도록 변경했습니다.
+	public void reject(RejectReason reason, String detail) {
 		this.status = RequestStatus.REJECTED;
+		this.rejectReason = reason;
+		this.rejectReasonDetail = detail;
 	}
 
 	public void startProgress() {
@@ -104,6 +135,22 @@ public class Request extends BaseTimeEntity {
 
 	public void complete() {
 		this.status = RequestStatus.COMPLETED;
+	}
+
+	// ⭐ [Figma 반영] "168시간 미활동 자동 취소" - 자동취소 배치 또는 임대인의 수동 취소에서 호출
+	public void cancel() {
+		this.status = RequestStatus.CANCELED;
+	}
+
+	// ⭐ [Figma 반영] 채팅 전송/일정 등록/일정 변경/일정 수락/일정 확인/현장 방문 완료/견적 임시저장/견적 전송 등
+	// "유효 활동"이 발생할 때마다 호출해 자동취소 타이머를 리셋합니다.
+	public void touch() {
+		this.lastActivityAt = LocalDateTime.now();
+		this.warningSent = false;
+	}
+
+	public void markWarningSent() {
+		this.warningSent = true;
 	}
 
 	// ⭐ DB가 부여한 auto-increment id를 이용해 사람이 읽는 코드를 나중에 붙일 때 사용 (RequestService 참고 -

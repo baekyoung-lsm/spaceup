@@ -12,6 +12,8 @@ import com.spaceup.domain.admin.repository.SystemSettingRepository;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.entity.MemberRole;
 import com.spaceup.domain.member.repository.MemberRepository;
+import com.spaceup.domain.notification.entity.NotificationType;
+import com.spaceup.domain.notification.service.NotificationService;
 import com.spaceup.domain.settlement.dto.SettlementCreateRequest;
 import com.spaceup.domain.settlement.dto.SettlementResponse;
 import com.spaceup.domain.settlement.entity.Settlement;
@@ -31,6 +33,7 @@ public class SettlementService {
 	private final SettlementRepository settlementRepository;
 	private final MemberRepository memberRepository;
 	private final SystemSettingRepository systemSettingRepository;
+	private final NotificationService notificationService;
 
 	// ⭐ admin/system_settings 테이블의 "COMMISSION_RATE" 키가 없을 때만 쓰는 안전장치용 기본값입니다.
 	// (관리자가 시스템설정 화면에서 값을 세팅하면 그쪽이 우선합니다)
@@ -38,6 +41,7 @@ public class SettlementService {
 	private static final double FALLBACK_COMMISSION_RATE = 0.10;
 
 	// ⭐ PDF "정산/수수료 관리(관리자)" - 거래 1건에 대한 정산 레코드 생성. 거래금액에서 수수료를 뗀 정산액을 계산합니다.
+	// ⭐ [Figma 반영] 생성 시점에 정산 대상자(시공사/자재업체)에게 알림을 보냅니다.
 	@Transactional
 	public Long createSettlement(SettlementCreateRequest dto) {
 		Member partner = memberRepository.findById(dto.getPartnerId())
@@ -52,6 +56,9 @@ public class SettlementService {
 		settlementRepository.save(settlement);
 		// ⭐ count()+1 대신 DB가 발급한 id를 그대로 코드에 사용 (동시 생성에도 안전)
 		settlement.assignCode(generateTransactionCode(settlement.getId()));
+
+		notificationService.notify(partner.getId(), NotificationType.SETTLEMENT, "정산 예정 내역이 등록되었습니다",
+				String.format("%,d원 정산이 예정되어 있습니다.", payout));
 		return settlement.getId();
 	}
 
@@ -62,9 +69,13 @@ public class SettlementService {
 	}
 
 	// ⭐ PDF "정산 관리(자재업체/시공사)" - 정산 완료 처리
+	// ⭐ [Figma 반영] 완료 시점에 정산 대상자에게 알림을 보냅니다.
 	@Transactional
 	public void complete(Long settlementId) {
-		findSettlementOrThrow(settlementId).complete();
+		Settlement settlement = findSettlementOrThrow(settlementId);
+		settlement.complete();
+		notificationService.notify(settlement.getPartner().getId(), NotificationType.SETTLEMENT, "정산 처리가 완료되었습니다",
+				String.format("%s 정산 금액이 지급되었습니다.", settlement.getTransactionCode()));
 	}
 
 	// ⭐ 정산 당사자 본인 또는 관리자만 상세 조회 가능

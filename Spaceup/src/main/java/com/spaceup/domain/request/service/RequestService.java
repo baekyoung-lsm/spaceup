@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.spaceup.domain.analysis.repository.SpaceAnalysisRepository;
+import com.spaceup.domain.analysis.entity.SpaceAnalysis;
 import com.spaceup.domain.analysis.service.SpaceAnalysisService;
 import com.spaceup.domain.matching.service.MatchingScoreCalculator;
 import com.spaceup.domain.member.entity.Member;
@@ -16,6 +18,7 @@ import com.spaceup.domain.notification.entity.NotificationType;
 import com.spaceup.domain.notification.service.NotificationService;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
 import com.spaceup.domain.request.dto.RequestResponse;
+import com.spaceup.domain.request.entity.RejectReason;
 import com.spaceup.domain.request.entity.Request;
 import com.spaceup.domain.request.entity.RequestStatus;
 import com.spaceup.domain.request.repository.RequestRepository;
@@ -35,6 +38,7 @@ public class RequestService {
 	private final MemberRepository memberRepository;
 	private final MatchingScoreCalculator matchingScoreCalculator;
 	private final SpaceAnalysisService spaceAnalysisService;
+	private final SpaceAnalysisRepository spaceAnalysisRepository;
 	private final NotificationService notificationService;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 시 호출. AI 분석은 domain/analysis 쪽에서 별도로 요청합니다
@@ -47,29 +51,33 @@ public class RequestService {
 		Request request = Request.builder().landlord(landlord).region(dto.getRegion())
 				.propertyType(dto.getPropertyType()).areaM2(dto.getAreaM2()).deposit(dto.getDeposit())
 				.monthlyRent(dto.getMonthlyRent()).targetRent(dto.getTargetRent()).budget(dto.getBudget())
-				.desiredDate(dto.getDesiredDate()).requestedItems(dto.getRequestedItems())
-				.status(RequestStatus.NEW).build();
+				.budgetMin(dto.getBudgetMin()).budgetMax(dto.getBudgetMax()).desiredDate(dto.getDesiredDate())
+				.requestedItems(dto.getRequestedItems()).status(RequestStatus.NEW).build();
 
 		// ⭐ IDENTITY 전략이라 save() 시점에 DB가 id를 즉시 발급합니다. count()+1 방식과 달리 동시 요청 두 개가
 		// 같은 코드를 받을 수 없어요 (id 자체가 DB가 보장하는 유일값이라서).
 		requestRepository.save(request);
 		request.assignCode(generateRequestCode(request.getId()));
+		request.touch(); // ⭐ 생성 시점부터 자동취소 타이머 시작
 
 		return request.getId();
 	}
 
 	public RequestResponse getRequest(Long requestId) {
-		return new RequestResponse(findRequestOrThrow(requestId));
+		Request request = findRequestOrThrow(requestId);
+		return new RequestResponse(request, lookupMatchingScore(requestId));
 	}
 
 	// ⭐ PDF "의뢰 목록" 화면 - 시공사 관점 (페이지네이션)
 	public Page<RequestResponse> getRequestsForContractor(Long contractorId, Pageable pageable) {
-		return requestRepository.findByContractorId(contractorId, pageable).map(RequestResponse::new);
+		return requestRepository.findByContractorId(contractorId, pageable)
+				.map(request -> new RequestResponse(request, lookupMatchingScore(request.getId())));
 	}
 
 	// ⭐ PDF "마이페이지 - 견적 요청 내역" 화면 - 임대인 관점 (페이지네이션)
 	public Page<RequestResponse> getRequestsForLandlord(Long landlordId, Pageable pageable) {
-		return requestRepository.findByLandlordId(landlordId, pageable).map(RequestResponse::new);
+		return requestRepository.findByLandlordId(landlordId, pageable)
+				.map(request -> new RequestResponse(request, lookupMatchingScore(request.getId())));
 	}
 
 	// ⭐ 임대인이 특정 시공사에게 견적을 요청하는 순간(PDF 08 견적 요청) 시공사가 매칭됩니다. 본인이 등록한 의뢰만 배정
@@ -83,6 +91,7 @@ public class RequestService {
 		Member contractor = memberRepository.findById(contractorId)
 				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 시공사입니다: " + contractorId));
 		request.assignContractor(contractor);
+		request.touch();
 
 		int score = matchingScoreCalculator.calculate(request, contractorId);
 		spaceAnalysisService.updateMatchingScoreIfExists(requestId, score);
@@ -99,21 +108,31 @@ public class RequestService {
 		validateAssignedContractor(request, contractorId);
 		validateTransitionable(request, RequestStatus.REVIEWING);
 		request.approve();
+		request.touch();
 
 		notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 승인되었습니다",
 				String.format("%s 의뢰를 시공사가 승인했습니다. 견적을 확인해 주세요.", request.getRequestCode()));
 	}
 
 	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 거절" 버튼 - 배정받은 시공사 본인만 가능
+	// ⭐ [Figma 반영] 거절 사유(reason/detail)를 함께 받도록 시그니처를 변경했습니다.
 	@Transactional
-	public void reject(Long requestId, Long contractorId) {
+	public void reject(Long requestId, Long contractorId, RejectReason reason, String detail) {
 		Request request = findRequestOrThrow(requestId);
 		validateAssignedContractor(request, contractorId);
 		validateTransitionable(request, RequestStatus.REVIEWING);
-		request.reject();
+		request.reject(reason, detail);
+		request.touch();
 
 		notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 거절되었습니다",
 				String.format("%s 의뢰를 시공사가 거절했습니다.", request.getRequestCode()));
+	}
+
+	// ⭐ [Figma 반영] "유효 활동" 발생 지점(채팅 전송, 일정 등록/변경/수락/확인, 현장 방문 완료, 견적 임시저장/전송 등)에서
+	// 각 도메인 서비스가 호출해 자동취소 타이머를 리셋하는 공용 확장 지점입니다.
+	@Transactional
+	public void touchActivity(Long requestId) {
+		requestRepository.findById(requestId).ifPresent(Request::touch);
 	}
 
 	private void validateAssignedContractor(Request request, Long contractorId) {
@@ -127,6 +146,10 @@ public class RequestService {
 			throw new InvalidStatusTransitionException(
 					String.format("현재 상태(%s)에서는 처리할 수 없습니다. 예상 상태: %s", request.getStatus(), expected));
 		}
+	}
+
+	private Integer lookupMatchingScore(Long requestId) {
+		return spaceAnalysisRepository.findByRequestId(requestId).map(SpaceAnalysis::getMatchingScore).orElse(null);
 	}
 
 	private Request findRequestOrThrow(Long requestId) {

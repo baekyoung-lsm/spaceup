@@ -1,5 +1,6 @@
 package com.spaceup.domain.request.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,4 +25,14 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
 
 	// ⭐ PDF "마이페이지 - 견적 요청 내역" 화면: 임대인이 본인이 보낸 의뢰 목록 조회
 	Page<Request> findByLandlordId(Long landlordId, Pageable pageable);
+
+	// ⭐ [Figma 반영] "7일 자동 취소" 배치용: 아직 진행 중(대기 상태)인데 lastActivityAt이 기준시각보다 오래된 것들
+	List<Request> findByStatusInAndLastActivityAtBefore(List<RequestStatus> statuses, LocalDateTime threshold);
+
+	// ⭐ 144시간(D-1) 알림 대상: 경고 미발송 + 기준시각(144h 전)보다 오래된 것들
+	List<Request> findByStatusInAndWarningSentFalseAndLastActivityAtBefore(List<RequestStatus> statuses,
+			LocalDateTime threshold);
+
+	// ⭐ [Figma 반영] 시공사 대시보드 "신규 리드/검토중" 카드용
+	long countByContractorIdAndStatus(Long contractorId, RequestStatus status);
 }
