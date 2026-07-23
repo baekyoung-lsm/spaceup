@@ -12,7 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
-import com.spaceup.domain.request.entity.Request;
+import com.spaceup.domain.request.entity.QuoteRequest;
 import com.spaceup.global.entity.BaseTimeEntity;
 
 import lombok.AccessLevel;
@@ -23,24 +23,31 @@ import lombok.NoArgsConstructor;
 /**
  * ⭐ PDF "공간 정보 확인" / "의뢰 상세 - AI분석" 화면. 기존엔 Request에 @Embedded로 붙어있었지만, 분석은
  * (1) 외부 ML 파이프라인이 비동기로 채워주고 (2) 재분석 요청이 생길 수 있고 (3) 상태(PENDING/FAILED) 관리가
- * 필요해서 독립 엔티티로 분리했습니다. Request : SpaceAnalysis = 1 : 1 이지만, FK는 이쪽(SpaceAnalysis)이
- * 들고 있어서 "아직 분석 전"인 Request도 자유롭게 만들 수 있습니다.
+ * 필요해서 독립 엔티티로 분리했습니다. QuoteRequest : AnalysisJob = 1 : 1 이지만, FK는 이쪽(AnalysisJob)이
+ * 들고 있어서 "아직 분석 전"인 QuoteRequest도 자유롭게 만들 수 있습니다.
+ *
+ * ⭐ [DB 명칭 정합화] DB팀 명세의 analysis_job에 테이블/PK명을 맞췄습니다(클래스명도 SpaceAnalysis→AnalysisJob).
+ * PDF의 analysis_job은 floorplan_id/pipeline_version/ocr_result_json 등 OCR·세그멘테이션 파이프라인
+ * 필드를 갖고 있지만, 지금 ML 콜백(AnalysisJobResultRequest)이 그런 값을 보내주지 않아서 채울 수 없는
+ * 컬럼은 추가하지 않았습니다. 대신 이 앱의 핵심 가치인 roomCount~expectedRentIncrease 등 집계 필드는
+ * PDF에 없지만 그대로 유지합니다. PDF의 space_result(공간별 세부 결과, 1:N)도 같은 이유로 만들지 않았습니다.
  */
 @Entity
-@Table(name = "space_analyses")
+@Table(name = "analysis_job")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @lombok.AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class SpaceAnalysis extends BaseTimeEntity {
+public class AnalysisJob extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "analysis_id")
 	private Long id;
 
 	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "request_id", nullable = false, unique = true)
-	private Request request;
+	private QuoteRequest request;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
@@ -77,7 +84,7 @@ public class SpaceAnalysis extends BaseTimeEntity {
 	@Column(name = "estimated_quote_max")
 	private Long estimatedQuoteMax;
 
-	// ⭐ [Figma 반영] "ROI 요약" 카드. 현재 월세는 Request.monthlyRent를 그대로 참조해서 쓰고(중복 저장 안 함),
+	// ⭐ [Figma 반영] "ROI 요약" 카드. 현재 월세는 Property.currentMonthlyRent를 그대로 참조해서 쓰고(중복 저장 안 함),
 	// 여기서는 AI가 계산한 예상 상승분/회수기간만 보관합니다.
 	@Column(name = "expected_rent_increase_min")
 	private Long expectedRentIncreaseMin;

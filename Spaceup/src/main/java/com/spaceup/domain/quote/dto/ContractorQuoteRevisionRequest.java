@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class QuoteRevisionRequest {
+public class ContractorQuoteRevisionRequest {
 
 	@NotBlank(message = "수정 요청 내용을 입력해 주세요.")
 	private String note;

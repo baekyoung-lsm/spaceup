@@ -2,12 +2,14 @@ package com.spaceup.domain.request.dto;
 
 import java.time.LocalDateTime;
 
+import com.spaceup.domain.request.entity.QuoteRequest;
 import com.spaceup.domain.request.entity.RejectReason;
-import com.spaceup.domain.request.entity.Request;
 import com.spaceup.domain.request.entity.RequestStatus;
 
 import lombok.Getter;
 
+// ⭐ [DB 명칭 정합화] 내부적으로는 QuoteRequest+Property 두 엔티티로 나뉘었지만, 프론트에 노출되는 응답 필드는
+// 기존과 동일하게 평탄화해서 내려줍니다(REST 계약 불변).
 @Getter
 public class RequestResponse {
 	private final Long id;
@@ -28,23 +30,23 @@ public class RequestResponse {
 	private final String rejectReasonDetail;
 	private final LocalDateTime lastActivityAt;
 	// ⭐ [Figma 반영] "의뢰 목록" 카드에 매칭 점수가 바로 보여서, 분석 API를 따로 안 타도 되게 여기에도 노출합니다.
-	// 값은 RequestService가 SpaceAnalysisRepository에서 조회해 주입합니다(분석 전이면 null).
+	// 값은 RequestService가 AnalysisJobRepository에서 조회해 주입합니다(분석 전이면 null).
 	private final Integer matchingScore;
 	private final LocalDateTime createdAt;
 
-	public RequestResponse(Request request) {
+	public RequestResponse(QuoteRequest request) {
 		this(request, null);
 	}
 
-	public RequestResponse(Request request, Integer matchingScore) {
+	public RequestResponse(QuoteRequest request, Integer matchingScore) {
 		this.id = request.getId();
 		this.requestCode = request.getRequestCode();
-		this.landlordId = request.getLandlord().getId();
-		this.landlordName = request.getLandlord().getName();
+		this.landlordId = request.getOwner().getId();
+		this.landlordName = request.getOwner().getName();
 		this.contractorId = request.getContractor() != null ? request.getContractor().getId() : null;
-		this.region = request.getRegion();
-		this.propertyType = request.getPropertyType();
-		this.areaM2 = request.getAreaM2();
+		this.region = request.getProperty().getRegion();
+		this.propertyType = request.getProperty().getHousingType();
+		this.areaM2 = request.getProperty().getExclusiveAreaM2();
 		this.budget = request.getBudget();
 		this.budgetMin = request.getBudgetMin();
 		this.budgetMax = request.getBudgetMax();

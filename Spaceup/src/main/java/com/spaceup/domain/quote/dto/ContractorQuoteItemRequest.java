@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class QuoteItemRequest {
+public class ContractorQuoteItemRequest {
 
 	@NotBlank(message = "견적 항목 분류는 필수 입력 사항입니다.")
 	private String category;

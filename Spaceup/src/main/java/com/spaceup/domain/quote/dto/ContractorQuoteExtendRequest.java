@@ -12,7 +12,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class QuoteExtendRequest {
+public class ContractorQuoteExtendRequest {
 
 	@NotNull(message = "새 만료일은 필수입니다.")
 	@Future(message = "새 만료일은 미래 날짜여야 합니다.")

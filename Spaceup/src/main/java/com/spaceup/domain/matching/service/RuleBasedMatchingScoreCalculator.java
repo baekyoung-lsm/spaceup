@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.spaceup.domain.contractor.entity.ContractorProfile;
 import com.spaceup.domain.contractor.repository.ContractorProfileRepository;
-import com.spaceup.domain.request.entity.Request;
+import com.spaceup.domain.request.entity.QuoteRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,14 +29,14 @@ public class RuleBasedMatchingScoreCalculator implements MatchingScoreCalculator
 	private final ContractorProfileRepository contractorProfileRepository;
 
 	@Override
-	public int calculate(Request request, Long contractorId) {
+	public int calculate(QuoteRequest request, Long contractorId) {
 		return contractorProfileRepository.findByMemberId(contractorId).map(profile -> score(request, profile))
 				.orElse(BASE_SCORE); // 프로필이 아직 없으면(온보딩 전) 기본 점수만 부여
 	}
 
-	private int score(Request request, ContractorProfile profile) {
+	private int score(QuoteRequest request, ContractorProfile profile) {
 		int score = BASE_SCORE;
-		score += regionScore(request.getRegion(), profile.getActivityRegions());
+		score += regionScore(request.getProperty().getRegion(), profile.getActivityRegions());
 		score += specialtyScore(request.getRequestedItems(), profile.getSpecialties());
 		return Math.min(score, 100);
 	}

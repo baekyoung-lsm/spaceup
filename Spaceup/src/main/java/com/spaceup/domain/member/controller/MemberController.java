@@ -10,6 +10,7 @@ import com.spaceup.domain.member.dto.MemberJoinRequest;
 import com.spaceup.domain.member.dto.MemberResponse;
 import com.spaceup.domain.member.dto.MemberUpdateRequest;
 import com.spaceup.domain.member.dto.PhoneUpdateRequest;
+import com.spaceup.domain.member.dto.PhoneVerificationConfirmRequest;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.member.service.MemberService;
@@ -69,6 +70,23 @@ public class MemberController {
 		Long memberId = getMemberIdFromAuthentication(authentication);
 		memberService.updatePhoneNumber(memberId, request.getPhoneNumber());
 		return ResponseEntity.ok(ApiResponse.success("휴대폰 번호가 변경되었습니다. 재인증이 필요합니다.", null));
+	}
+
+	// ⭐ [목업 OTP] 인증코드 발송 - 실제 SMS 벤더 연동 전까지는 발급한 코드를 응답에 그대로 실어 보냅니다.
+	@PostMapping("/me/phone/verify-code/send")
+	public ResponseEntity<ApiResponse<String>> sendPhoneVerificationCode(Authentication authentication) {
+		Long memberId = getMemberIdFromAuthentication(authentication);
+		String code = memberService.sendPhoneVerificationCode(memberId);
+		return ResponseEntity.ok(ApiResponse.success("인증코드가 발급되었습니다. (목업: 실제 SMS 미발송, 아래 코드를 그대로 사용하세요)", code));
+	}
+
+	// ⭐ [목업 OTP] 인증코드 확인
+	@PostMapping("/me/phone/verify-code/confirm")
+	public ResponseEntity<ApiResponse<Void>> confirmPhoneVerification(
+			@Valid @RequestBody PhoneVerificationConfirmRequest request, Authentication authentication) {
+		Long memberId = getMemberIdFromAuthentication(authentication);
+		memberService.confirmPhoneVerification(memberId, request.getCode());
+		return ResponseEntity.ok(ApiResponse.success("휴대폰 인증이 완료되었습니다.", null));
 	}
 
 	// ⭐ [Figma 반영] "보완 요청" 화면의 "보완 자료 재제출" 버튼 - 본인만, NEEDS_REVISION 상태에서만 가능

@@ -9,9 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.spaceup.domain.notification.entity.NotificationType;
 import com.spaceup.domain.notification.service.NotificationService;
-import com.spaceup.domain.request.entity.Request;
+import com.spaceup.domain.request.entity.QuoteRequest;
 import com.spaceup.domain.request.entity.RequestStatus;
-import com.spaceup.domain.request.repository.RequestRepository;
+import com.spaceup.domain.request.repository.QuoteRequestRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,7 @@ public class RequestAutoCancelScheduler {
 	private static final List<RequestStatus> TRACKED_STATUSES = List.of(RequestStatus.NEW, RequestStatus.REVIEWING,
 			RequestStatus.QUOTE_REQUESTED, RequestStatus.APPROVED);
 
-	private final RequestRepository requestRepository;
+	private final QuoteRequestRepository quoteRequestRepository;
 	private final NotificationService notificationService;
 
 	@Scheduled(fixedDelay = 10 * 60 * 1000L) // 10분마다 실행
@@ -46,11 +46,11 @@ public class RequestAutoCancelScheduler {
 
 	private void sendD1Warnings() {
 		LocalDateTime threshold = LocalDateTime.now().minusHours(144);
-		List<Request> targets = requestRepository.findByStatusInAndWarningSentFalseAndLastActivityAtBefore(
+		List<QuoteRequest> targets = quoteRequestRepository.findByStatusInAndWarningSentFalseAndLastActivityAtBefore(
 				TRACKED_STATUSES, threshold);
-		for (Request request : targets) {
+		for (QuoteRequest request : targets) {
 			request.markWarningSent();
-			notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰 자동 취소 D-1 안내",
+			notificationService.notify(request.getOwner().getId(), NotificationType.REQUEST, "의뢰 자동 취소 D-1 안내",
 					String.format("%s 의뢰가 24시간 내 유효 활동이 없으면 자동 취소됩니다.", request.getRequestCode()));
 			if (request.getContractor() != null) {
 				notificationService.notify(request.getContractor().getId(), NotificationType.REQUEST,
@@ -63,10 +63,11 @@ public class RequestAutoCancelScheduler {
 
 	private void autoCancelInactive() {
 		LocalDateTime threshold = LocalDateTime.now().minusHours(168);
-		List<Request> targets = requestRepository.findByStatusInAndLastActivityAtBefore(TRACKED_STATUSES, threshold);
-		for (Request request : targets) {
+		List<QuoteRequest> targets = quoteRequestRepository.findByStatusInAndLastActivityAtBefore(TRACKED_STATUSES,
+				threshold);
+		for (QuoteRequest request : targets) {
 			request.cancel();
-			notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 자동 취소되었습니다",
+			notificationService.notify(request.getOwner().getId(), NotificationType.REQUEST, "의뢰가 자동 취소되었습니다",
 					String.format("%s 의뢰가 168시간 동안 유효 활동이 없어 자동 취소되었습니다.", request.getRequestCode()));
 			if (request.getContractor() != null) {
 				notificationService.notify(request.getContractor().getId(), NotificationType.REQUEST,

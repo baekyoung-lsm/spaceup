@@ -156,4 +156,12 @@ public class GlobalExceptionHandler {
 		log.warn("포트폴리오 조회 실패: {}", e.getMessage());
 		return ResponseEntity.status(404).body(ApiResponse.fail(e.getMessage()));
 	}
+
+	// ⭐ [목업 OTP] 인증코드 불일치/만료 예외 핸들러
+	@ExceptionHandler(InvalidVerificationCodeException.class)
+	public ResponseEntity<ApiResponse<Void>> handleInvalidVerificationCodeException(
+			InvalidVerificationCodeException e) {
+		log.warn("휴대폰 인증코드 검증 실패: {}", e.getMessage());
+		return ResponseEntity.status(400).body(ApiResponse.fail(e.getMessage()));
+	}
 }

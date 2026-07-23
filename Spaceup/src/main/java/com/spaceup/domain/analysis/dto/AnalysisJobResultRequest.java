@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class SpaceAnalysisResultRequest {
+public class AnalysisJobResultRequest {
 
 	private Integer roomCount;
 	private Integer bathroomCount;

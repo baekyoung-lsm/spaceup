@@ -4,13 +4,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.spaceup.domain.quote.entity.Quote;
+import com.spaceup.domain.quote.entity.ContractorQuote;
 import com.spaceup.domain.quote.entity.QuoteStatus;
 
 import lombok.Getter;
 
 @Getter
-public class QuoteResponse {
+public class ContractorQuoteResponse {
 	private final Long id;
 	private final Long requestId;
 	private final Long contractorId;
@@ -24,7 +24,7 @@ public class QuoteResponse {
 	private final Integer revisionCount;
 	private final List<ItemView> items;
 
-	public QuoteResponse(Quote quote) {
+	public ContractorQuoteResponse(ContractorQuote quote) {
 		this.id = quote.getId();
 		this.requestId = quote.getRequest().getId();
 		this.contractorId = quote.getContractor().getId();

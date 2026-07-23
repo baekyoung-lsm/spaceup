@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import com.spaceup.domain.analysis.service.SpaceAnalysisService;
+import com.spaceup.domain.analysis.service.AnalysisJobService;
 import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
 import com.spaceup.domain.request.dto.RequestRejectRequest;
@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class RequestController {
 
 	private final RequestService requestService;
-	private final SpaceAnalysisService spaceAnalysisService;
+	private final AnalysisJobService analysisJobService;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 버튼 → 의뢰 생성 (로그인한 임대인 본인 명의로 생성) + AI 분석 PENDING 등록
 	@PostMapping
@@ -32,7 +32,7 @@ public class RequestController {
 			Authentication authentication) {
 		Long landlordId = getMemberId(authentication);
 		Long requestId = requestService.createRequest(landlordId, request);
-		spaceAnalysisService.requestAnalysis(requestId); // ⭐ ML 파이프라인에 분석을 맡기는 시작점
+		analysisJobService.requestAnalysis(requestId); // ⭐ ML 파이프라인에 분석을 맡기는 시작점
 		return ResponseEntity.ok(ApiResponse.success("의뢰가 등록되었습니다.", requestId));
 	}
 

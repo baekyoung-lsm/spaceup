@@ -14,9 +14,9 @@ import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.entity.MemberRole;
 import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.domain.quote.entity.QuoteStatus;
-import com.spaceup.domain.quote.repository.QuoteRepository;
+import com.spaceup.domain.quote.repository.ContractorQuoteRepository;
 import com.spaceup.domain.request.entity.RequestStatus;
-import com.spaceup.domain.request.repository.RequestRepository;
+import com.spaceup.domain.request.repository.QuoteRequestRepository;
 import com.spaceup.domain.settlement.entity.SettlementStatus;
 import com.spaceup.domain.settlement.repository.SettlementRepository;
 import com.spaceup.global.error.InvalidRoleException;
@@ -31,8 +31,8 @@ public class ContractorProfileService {
 
 	private final ContractorProfileRepository contractorProfileRepository;
 	private final MemberRepository memberRepository;
-	private final RequestRepository requestRepository;
-	private final QuoteRepository quoteRepository;
+	private final QuoteRequestRepository quoteRequestRepository;
+	private final ContractorQuoteRepository contractorQuoteRepository;
 	private final SettlementRepository settlementRepository;
 
 	// ⭐ get-or-create 패턴: 시공사가 프로필을 아직 한 번도 저장 안 했어도 조회 시 빈 프로필을 즉시 만들어 돌려줍니다.
@@ -66,10 +66,11 @@ public class ContractorProfileService {
 
 	// ⭐ [Figma 반영] "시공사 대시보드" 상단 요약 카드. 정확한 단계 매핑은 API 명세서 비고 참고.
 	public ContractorDashboardResponse getDashboard(Long memberId) {
-		long newLeads = requestRepository.countByContractorIdAndStatus(memberId, RequestStatus.REVIEWING);
-		long quoteRequested = requestRepository.countByContractorIdAndStatus(memberId, RequestStatus.QUOTE_REQUESTED);
-		long quoteSent = quoteRepository.countByContractorIdAndStatus(memberId, QuoteStatus.SUBMITTED);
-		long contractPending = quoteRepository.countByContractorIdAndStatus(memberId, QuoteStatus.ACCEPTED);
+		long newLeads = quoteRequestRepository.countByContractorIdAndStatus(memberId, RequestStatus.REVIEWING);
+		long quoteRequested = quoteRequestRepository.countByContractorIdAndStatus(memberId,
+				RequestStatus.QUOTE_REQUESTED);
+		long quoteSent = contractorQuoteRepository.countByContractorIdAndStatus(memberId, QuoteStatus.SUBMITTED);
+		long contractPending = contractorQuoteRepository.countByContractorIdAndStatus(memberId, QuoteStatus.ACCEPTED);
 		Long pendingAmount = settlementRepository.sumPayoutAmountByPartnerIdAndStatus(memberId,
 				SettlementStatus.PENDING);
 		return new ContractorDashboardResponse(newLeads, quoteRequested, quoteSent, contractPending,

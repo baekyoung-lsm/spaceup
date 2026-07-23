@@ -1,7 +1,20 @@
 package com.spaceup.domain.member.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.security.SecureRandom;
+
+// ⭐ [NCP SENS 전환용] 아래 sendSmsViaNcpSens()/makeSensSignature() 주석을 해제할 때 이 import들도 함께 해제하세요.
+// import java.net.URI;
+// import java.net.http.HttpClient;
+// import java.net.http.HttpRequest;
+// import java.net.http.HttpResponse;
+// import java.nio.charset.StandardCharsets;
+// import java.util.Base64;
+// import javax.crypto.Mac;
+// import javax.crypto.spec.SecretKeySpec;
+// import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +28,7 @@ import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.global.error.DuplicateMemberException;
 import com.spaceup.global.error.InvalidRoleException;
 import com.spaceup.global.error.InvalidStatusTransitionException;
+import com.spaceup.global.error.InvalidVerificationCodeException;
 import com.spaceup.global.error.MemberNotFoundException;
 import com.spaceup.global.error.WithdrawnMemberException;
 
@@ -25,8 +39,26 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class MemberService {
 
+	// ⭐ [목업 OTP] 인증코드 유효시간
+	private static final int VERIFICATION_CODE_TTL_MINUTES = 5;
+
 	private final MemberRepository memberRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final SecureRandom secureRandom = new SecureRandom();
+
+	// ⭐ [NCP SENS 전환용] 네이버클라우드 SENS 자격증명 - 프로젝트 기간 동안 발급받기로 함(아직 미발급).
+	// 발급받으면 application-local.yml에 ncp.sens.* 값을 채우고 아래 주석을 해제하세요.
+	// @Value("${ncp.sens.service-id}")
+	// private String sensServiceId;
+	//
+	// @Value("${ncp.sens.access-key}")
+	// private String sensAccessKey;
+	//
+	// @Value("${ncp.sens.secret-key}")
+	// private String sensSecretKey;
+	//
+	// @Value("${ncp.sens.sender-phone}")
+	// private String sensSenderPhone;
 
 	@Transactional
 	public Long join(Member member) {
@@ -127,5 +159,88 @@ public class MemberService {
 	private String generateApplicationNumber(Long id) {
 		String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
 		return String.format("ON-%s-%06d", datePart, id);
+	}
+
+	// ⭐ [목업 OTP] 6자리 인증코드를 발급합니다.
+	// TODO: 실제 문자 발송은 외부 클라우드 SMS 벤더(예: NCP SENS, Twilio) 연동이 필요합니다.
+	// 지금은 그 연동 없이 발급한 코드값을 응답에 그대로 실어 보내는 목업으로 동작합니다 - 연동 전까지는
+	// 이 반환값(코드)을 그대로 확인 API에 넣으면 인증이 완료됩니다.
+	@Transactional
+	public String sendPhoneVerificationCode(Long memberId) {
+		Member member = memberRepository.findById(memberId)
+				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 회원 번호입니다: " + memberId));
+		String code = String.format("%06d", secureRandom.nextInt(1_000_000));
+		member.issueVerificationCode(code, LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
+		return code;
+	}
+
+	// ===== [NCP SENS 전환용] =====
+	// 네이버클라우드 SENS가 발급되면 아래 순서로 전환하세요.
+	// 1) 위 목업 버전 sendPhoneVerificationCode()를 통째로 주석 처리
+	// 2) 이 블록(메서드 3개)의 주석을 해제
+	// 3) 파일 상단의 NCP 관련 import, 그리고 sensServiceId 등 @Value 필드 주석 해제
+	// 4) application-local.yml에 ncp.sens.* 값 채우기
+	//
+	// @Transactional
+	// public String sendPhoneVerificationCode(Long memberId) {
+	// Member member = memberRepository.findById(memberId)
+	// .orElseThrow(() -> new MemberNotFoundException("존재하지 않는 회원 번호입니다: " + memberId));
+	// if (member.getPhoneNumber() == null) {
+	// throw new InvalidStatusTransitionException("휴대폰 번호가 등록되어 있지 않습니다.");
+	// }
+	// String code = String.format("%06d", secureRandom.nextInt(1_000_000));
+	// member.issueVerificationCode(code, LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
+	// sendSmsViaNcpSens(member.getPhoneNumber(), String.format("[Spaceup] 인증번호 [%s]를 입력해 주세요.", code));
+	// // 실제 발송 모드에서는 코드값을 API 응답에 그대로 노출하면 안 되므로 null을 반환합니다
+	// // (컨트롤러의 성공 메시지도 "문자로 발송된 인증코드를 입력해 주세요" 식으로 같이 바꿔주세요).
+	// return null;
+	// }
+	//
+	// // ⭐ NCP SENS(Simple & Easy Notification Service) SMS 발송 API 호출.
+	// // 문서: https://api.ncloud-docs.com/docs/ai-application-service-sens-smsv2
+	// private void sendSmsViaNcpSens(String to, String content) {
+	// try {
+	// String path = "/sms/v2/services/" + sensServiceId + "/messages";
+	// String timestamp = String.valueOf(System.currentTimeMillis());
+	// String signature = makeSensSignature(timestamp, path);
+	//
+	// String body = String.format(
+	// "{\"type\":\"SMS\",\"from\":\"%s\",\"content\":\"%s\",\"messages\":[{\"to\":\"%s\"}]}", sensSenderPhone,
+	// content, to);
+	//
+	// HttpRequest request = HttpRequest.newBuilder().uri(URI.create("https://sens.apigw.ntruss.com" + path))
+	// .header("Content-Type", "application/json; charset=utf-8")
+	// .header("x-ncp-apigw-timestamp", timestamp).header("x-ncp-iam-access-key", sensAccessKey)
+	// .header("x-ncp-apigw-signature-v2", signature)
+	// .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+	//
+	// HttpResponse<String> response = HttpClient.newHttpClient().send(request,
+	// HttpResponse.BodyHandlers.ofString());
+	// if (response.statusCode() != 202) {
+	// throw new IllegalStateException("NCP SENS 발송 실패: " + response.statusCode() + " " + response.body());
+	// }
+	// } catch (Exception e) {
+	// throw new IllegalStateException("SMS 발송 중 오류가 발생했습니다.", e);
+	// }
+	// }
+	//
+	// // ⭐ NCP SENS 서명 규칙: HMAC-SHA256("POST" + " " + path + "\n" + timestamp + "\n" + accessKey)를
+	// // secretKey로 서명 후 Base64 인코딩
+	// private String makeSensSignature(String timestamp, String path) throws Exception {
+	// String message = "POST" + " " + path + "\n" + timestamp + "\n" + sensAccessKey;
+	// Mac mac = Mac.getInstance("HmacSHA256");
+	// mac.init(new SecretKeySpec(sensSecretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+	// byte[] rawHmac = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
+	// return Base64.getEncoder().encodeToString(rawHmac);
+	// }
+
+	// ⭐ [목업 OTP] 발급된 코드와 대조해 일치하면 phoneVerified=true로 전환합니다.
+	@Transactional
+	public void confirmPhoneVerification(Long memberId, String code) {
+		Member member = memberRepository.findById(memberId)
+				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 회원 번호입니다: " + memberId));
+		if (!member.verifyCode(code)) {
+			throw new InvalidVerificationCodeException("인증코드가 올바르지 않거나 만료되었습니다.");
+		}
 	}
 }

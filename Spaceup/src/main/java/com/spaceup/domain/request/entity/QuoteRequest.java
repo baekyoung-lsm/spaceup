@@ -23,58 +23,52 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * ⭐ PDF "임대 정보 입력 ~ 의뢰 상세" 화면들의 핵심 엔티티입니다. 임대인이 입력한 매물/희망 정보 + AI 분석 결과
- * (SpaceAnalysis)를 함께 들고 있고, 시공사가 이 Request를 확인해서 Quote(견적)를 붙이는 구조입니다.
+ * ⭐ PDF "임대 정보 입력 ~ 의뢰 상세" 화면들의 핵심 엔티티입니다. 임대인이 견적을 요청하는 워크플로우(상태/배정/거절사유/
+ * 자동취소 타이머)를 담당하고, 매물 자체의 속성은 {@link Property}로 분리되어 있습니다(1:1). AI 분석 결과
+ * (AnalysisJob)를 함께 들고 있고, 시공사가 이 QuoteRequest를 확인해서 ContractorQuote(견적)를 붙이는 구조입니다.
  *
- * 개발 순서상 이 도메인이 회원 다음으로 가장 먼저 필요합니다. Request가 없으면 Quote/Matching/Notification/Schedule
- * 어느 것도 만들 근거가 없기 때문입니다.
+ * ⭐ [DB 명칭 정합화] DB팀 명세의 quote_request에 클래스명/테이블/PK/일부 컬럼명을 맞췄습니다
+ * (Request→QuoteRequest, landlord→owner, budget→budgetAmount). targetRent/budgetMin/budgetMax/
+ * desiredDate/requestedItems/requestCode 등은 PDF에 없는 그룹 B 전용 컬럼이라 그대로 유지합니다.
  */
 @Entity
-@Table(name = "requests")
+@Table(name = "quote_request")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @lombok.AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Request extends BaseTimeEntity {
+public class QuoteRequest extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "request_id")
 	private Long id;
 
 	// ⭐ 화면에 보이는 "REQ-260715-012" 같은 사람이 읽는 코드. DB 내부 PK(id)와 분리해서 운영합니다.
-	@Column(name = "request_code", nullable = false, unique = true, length = 30)
+	// IDENTITY 전략은 save() 호출 즉시 INSERT가 실행되는데, 이 시점엔 requestCode가 아직 null(코드는 id 발급 후에
+	// assignCode()로 채움)이라 nullable=false로 두면 그 첫 INSERT 자체가 제약조건 위반으로 실패합니다.
+	@Column(name = "request_code", unique = true, length = 30)
 	private String requestCode;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "landlord_id", nullable = false)
-	private Member landlord; // 의뢰를 등록한 임대인
+	@JoinColumn(name = "owner_id", nullable = false)
+	private Member owner; // 의뢰를 등록한 임대인
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "property_id", nullable = false)
+	private Property property; // 이 견적요청이 대상으로 하는 매물
 
 	// ⭐ 특정 시공사를 지정해서 견적을 요청한 경우(PDF 08 견적 요청 화면). 아직 매칭 전이면 null일 수 있습니다.
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "contractor_id")
 	private Member contractor;
 
-	@Column(nullable = false, length = 50)
-	private String region; // 지역 (예: 광주 북구)
-
-	@Column(name = "property_type", nullable = false, length = 20)
-	private String propertyType; // 주택 유형 (아파트/오피스텔/빌라 등)
-
-	@Column(name = "area_m2", nullable = false)
-	private Double areaM2; // 전용 면적(㎡)
-
-	@Column(name = "deposit")
-	private Long deposit; // 보증금(원)
-
-	@Column(name = "monthly_rent")
-	private Long monthlyRent; // 현재 월세(원)
-
 	@Column(name = "target_rent")
 	private Long targetRent; // 목표 월세(원)
 
 	// ⭐ [Figma 반영] "의뢰 목록" 화면엔 예산이 "300~500만원" 같은 범위로 표시됩니다. 기존 단일 budget 필드는
 	// 하위호환을 위해 남겨두고, 범위 표현이 필요한 화면은 아래 budgetMin/budgetMax를 사용하세요.
-	@Column(name = "budget")
+	@Column(name = "budget_amount")
 	private Long budget; // (레거시) 리모델링 예산 단일값 - budgetMin/budgetMax 사용을 권장합니다.
 
 	@Column(name = "budget_min")

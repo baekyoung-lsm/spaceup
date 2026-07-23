@@ -13,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class QuoteCreateRequest {
+public class ContractorQuoteCreateRequest {
 
 	@NotNull(message = "의뢰 번호는 필수입니다.")
 	private Long requestId;
@@ -29,5 +29,5 @@ public class QuoteCreateRequest {
 
 	@NotEmpty(message = "견적 항목을 1개 이상 입력해 주세요.")
 	@Valid
-	private List<QuoteItemRequest> items;
+	private List<ContractorQuoteItemRequest> items;
 }

@@ -15,7 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import com.spaceup.domain.member.entity.Member;
-import com.spaceup.domain.request.entity.Request;
+import com.spaceup.domain.request.entity.QuoteRequest;
 import com.spaceup.global.entity.BaseTimeEntity;
 import com.spaceup.global.error.InvalidStatusTransitionException;
 
@@ -43,7 +43,7 @@ public class ScheduleEvent extends BaseTimeEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "request_id", nullable = false)
-	private Request request;
+	private QuoteRequest request;
 
 	@Column(nullable = false, length = 100)
 	private String title; // 예: "광주 북구 오피스텔 도배·장판 시공"

@@ -19,7 +19,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import com.spaceup.domain.member.entity.Member;
-import com.spaceup.domain.request.entity.Request;
+import com.spaceup.domain.request.entity.QuoteRequest;
 import com.spaceup.global.entity.BaseTimeEntity;
 
 import lombok.AccessLevel;
@@ -28,24 +28,30 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * ⭐ PDF "견적 작성 / 견적 제안 작성" 화면에 대응합니다. 하나의 Request(의뢰)에는 여러 개의 Quote가 시간에 따라
- * 생길 수 있어 다대일로 연결하고(재견적 이력 관리), 견적 항목(철거/바닥/조명 등)은 QuoteItem으로 분리했습니다.
+ * ⭐ PDF "견적 작성 / 견적 제안 작성" 화면에 대응합니다. 하나의 QuoteRequest(견적요청)에는 여러 개의
+ * ContractorQuote가 시간에 따라 생길 수 있어 다대일로 연결하고(재견적 이력 관리), 견적 항목(철거/바닥/조명 등)은
+ * ContractorQuoteItem으로 분리했습니다.
+ *
+ * ⭐ [DB 명칭 정합화] DB팀 명세의 contractor_quote에 클래스명/테이블/PK/일부 컬럼명을 맞췄습니다
+ * (Quote→ContractorQuote). PDF엔 warranty_months/additional_cost_conditions/invited_at 등 견적
+ * 생애주기 타임스탬프 필드가 더 있지만, 지금 로직이 채우지 않는 컬럼은 추가하지 않았습니다.
  */
 @Entity
-@Table(name = "quotes")
+@Table(name = "contractor_quote")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @lombok.AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Quote extends BaseTimeEntity {
+public class ContractorQuote extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "quote_id")
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "request_id", nullable = false)
-	private Request request;
+	private QuoteRequest request;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "contractor_id", nullable = false)
@@ -54,10 +60,10 @@ public class Quote extends BaseTimeEntity {
 	@Column(name = "title", length = 100)
 	private String title; // 견적 제목 (예: "역삼 오피스텔 리모델링 견적")
 
-	@Column(name = "start_date")
+	@Column(name = "available_start_date")
 	private String startDate; // 공사 시작 가능일
 
-	@Column(name = "duration_days")
+	@Column(name = "estimated_days")
 	private Integer durationDays; // 예상 공사 기간(일)
 
 	@Column(name = "material_cost")
@@ -97,15 +103,15 @@ public class Quote extends BaseTimeEntity {
 
 	@Builder.Default
 	@OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-	private List<QuoteItem> items = new ArrayList<>();
+	private List<ContractorQuoteItem> items = new ArrayList<>();
 
-	public void addItem(QuoteItem item) {
+	public void addItem(ContractorQuoteItem item) {
 		items.add(item);
 		item.assignQuote(this);
 	}
 
 	// ⭐ [최종 검토 반영] 기존에는 상태와 무관하게 전이가 성공해서, 이미 REJECTED된 견적을
-	// 다시 ACCEPTED로 바꾸는 것도 가능했습니다. Request 도메인과 동일한 가드 패턴을 적용합니다.
+	// 다시 ACCEPTED로 바꾸는 것도 가능했습니다. QuoteRequest 도메인과 동일한 가드 패턴을 적용합니다.
 	public void submit() {
 		validateStatus(QuoteStatus.DRAFT);
 		this.status = QuoteStatus.SUBMITTED;
@@ -128,7 +134,7 @@ public class Quote extends BaseTimeEntity {
 		}
 	}
 
-	// ⭐ [Figma 반영] "유효기간 연장" 화면 - 시공사만 호출 가능(QuoteService에서 소유권 검증)
+	// ⭐ [Figma 반영] "유효기간 연장" 화면 - 시공사만 호출 가능(ContractorQuoteService에서 소유권 검증)
 	public void extendValidUntil(LocalDate newValidUntil) {
 		this.validUntil = newValidUntil;
 	}

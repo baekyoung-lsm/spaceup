@@ -5,10 +5,10 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.spaceup.domain.analysis.entity.SpaceAnalysis;
+import com.spaceup.domain.analysis.entity.AnalysisJob;
 
 @Repository
-public interface SpaceAnalysisRepository extends JpaRepository<SpaceAnalysis, Long> {
+public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> {
 
-	Optional<SpaceAnalysis> findByRequestId(Long requestId);
+	Optional<AnalysisJob> findByRequestId(Long requestId);
 }

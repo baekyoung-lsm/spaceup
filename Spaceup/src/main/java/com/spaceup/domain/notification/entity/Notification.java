@@ -47,8 +47,11 @@ public class Notification extends BaseTimeEntity {
 	@Column(length = 300)
 	private String content;
 
+	// ⭐ [트러블슈팅 반영] 컬럼명을 명시 안 하면 필드명 그대로 'read' 컬럼이 되는데, READ는 MySQL
+	// 예약어라 create table 자체가 실패합니다. 컬럼명만 is_read로 지정해서 충돌을 피했습니다.
+	// (자바 필드명은 그대로 read라 Repository/Service 코드는 안 건드려도 됩니다)
 	@Builder.Default
-	@Column(nullable = false)
+	@Column(name = "is_read", nullable = false)
 	private boolean read = false;
 
 	public void markAsRead() {

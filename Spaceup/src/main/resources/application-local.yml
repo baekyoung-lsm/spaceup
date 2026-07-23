@@ -1,9 +1,9 @@
 spring:
     datasource:
-        url: jdbc:mysql://localhost:3306/template?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
+        url: jdbc:mysql://project-db-campus.smhrd.com:3307/cgi_25IS_GA3_p3_3?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
         driver-class-name: com.mysql.cj.jdbc.Driver
-        username: root
-        password: 12345
+        username: cgi_25IS_GA3_p3_3
+        password: smhrd3
 
     jpa:
         hibernate:
@@ -28,3 +28,12 @@ file:
 jwt:
     secret: local-dev-secret-key-change-in-production-environment-32bytes-이상
     expiration-ms: 3600000
+
+# ⭐ [NCP SENS 전환용] 프로젝트 기간 동안 네이버클라우드가 제공될 예정이라 미리 자리만 만들어뒀습니다.
+# 발급받으면 아래 주석을 풀고 값을 채운 뒤, MemberService의 목업 발송 코드를 NCP SENS 코드로 교체하세요.
+# ncp:
+#     sens:
+#         service-id: (NCP 콘솔 SENS 서비스에서 발급)
+#         access-key: (NCP 콘솔 > 마이페이지 > 인증키 관리에서 발급)
+#         secret-key: (NCP 콘솔 > 마이페이지 > 인증키 관리에서 발급)
+#         sender-phone: (SENS에 사전 등록된 발신번호, 예: 01012345678)

@@ -38,7 +38,6 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
@@ -46,6 +45,13 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// ⭐ [트러블슈팅 반영] @PathVariable/@RequestParam에 이름을 명시 안 한 곳들이 많아서,
+// 컴파일 시 매개변수 이름을 클래스 파일에 남기도록 -parameters 옵션을 켭니다.
+// 이게 없으면 "Name for argument of type [java.lang.Long] not specified..." 에러가 납니다.
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs << '-parameters'
 }
 
 // build.gradle 파일 맨 밑에 기존 코드를 지우고 이 코드로 교체합니다.

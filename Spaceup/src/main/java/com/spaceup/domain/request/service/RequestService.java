@@ -8,9 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.spaceup.domain.analysis.repository.SpaceAnalysisRepository;
-import com.spaceup.domain.analysis.entity.SpaceAnalysis;
-import com.spaceup.domain.analysis.service.SpaceAnalysisService;
+import com.spaceup.domain.analysis.entity.AnalysisJob;
+import com.spaceup.domain.analysis.repository.AnalysisJobRepository;
+import com.spaceup.domain.analysis.service.AnalysisJobService;
 import com.spaceup.domain.matching.service.MatchingScoreCalculator;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.repository.MemberRepository;
@@ -18,10 +18,12 @@ import com.spaceup.domain.notification.entity.NotificationType;
 import com.spaceup.domain.notification.service.NotificationService;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
 import com.spaceup.domain.request.dto.RequestResponse;
+import com.spaceup.domain.request.entity.Property;
+import com.spaceup.domain.request.entity.QuoteRequest;
 import com.spaceup.domain.request.entity.RejectReason;
-import com.spaceup.domain.request.entity.Request;
 import com.spaceup.domain.request.entity.RequestStatus;
-import com.spaceup.domain.request.repository.RequestRepository;
+import com.spaceup.domain.request.repository.PropertyRepository;
+import com.spaceup.domain.request.repository.QuoteRequestRepository;
 import com.spaceup.global.error.ForbiddenAccessException;
 import com.spaceup.global.error.InvalidStatusTransitionException;
 import com.spaceup.global.error.MemberNotFoundException;
@@ -34,29 +36,35 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class RequestService {
 
-	private final RequestRepository requestRepository;
+	private final QuoteRequestRepository quoteRequestRepository;
+	private final PropertyRepository propertyRepository;
 	private final MemberRepository memberRepository;
 	private final MatchingScoreCalculator matchingScoreCalculator;
-	private final SpaceAnalysisService spaceAnalysisService;
-	private final SpaceAnalysisRepository spaceAnalysisRepository;
+	private final AnalysisJobService analysisJobService;
+	private final AnalysisJobRepository analysisJobRepository;
 	private final NotificationService notificationService;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 시 호출. AI 분석은 domain/analysis 쪽에서 별도로 요청합니다
-	// (SpaceAnalysisService.requestAnalysis - 컨트롤러 레벨에서 이어 호출).
+	// (AnalysisJobService.requestAnalysis - 컨트롤러 레벨에서 이어 호출). 매물(Property)과 견적요청
+	// (QuoteRequest)이 PDF 구조대로 분리되어 있어서 여기서 두 단계로 저장합니다.
 	@Transactional
 	public Long createRequest(Long landlordId, RequestCreateRequest dto) {
 		Member landlord = memberRepository.findById(landlordId)
 				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 회원 번호입니다: " + landlordId));
 
-		Request request = Request.builder().landlord(landlord).region(dto.getRegion())
-				.propertyType(dto.getPropertyType()).areaM2(dto.getAreaM2()).deposit(dto.getDeposit())
-				.monthlyRent(dto.getMonthlyRent()).targetRent(dto.getTargetRent()).budget(dto.getBudget())
-				.budgetMin(dto.getBudgetMin()).budgetMax(dto.getBudgetMax()).desiredDate(dto.getDesiredDate())
-				.requestedItems(dto.getRequestedItems()).status(RequestStatus.NEW).build();
+		Property property = Property.builder().owner(landlord).region(dto.getRegion())
+				.housingType(dto.getPropertyType()).exclusiveAreaM2(dto.getAreaM2()).currentDeposit(dto.getDeposit())
+				.currentMonthlyRent(dto.getMonthlyRent()).build();
+		propertyRepository.save(property);
+
+		QuoteRequest request = QuoteRequest.builder().owner(landlord).property(property).targetRent(dto.getTargetRent())
+				.budget(dto.getBudget()).budgetMin(dto.getBudgetMin()).budgetMax(dto.getBudgetMax())
+				.desiredDate(dto.getDesiredDate()).requestedItems(dto.getRequestedItems()).status(RequestStatus.NEW)
+				.build();
 
 		// ⭐ IDENTITY 전략이라 save() 시점에 DB가 id를 즉시 발급합니다. count()+1 방식과 달리 동시 요청 두 개가
 		// 같은 코드를 받을 수 없어요 (id 자체가 DB가 보장하는 유일값이라서).
-		requestRepository.save(request);
+		quoteRequestRepository.save(request);
 		request.assignCode(generateRequestCode(request.getId()));
 		request.touch(); // ⭐ 생성 시점부터 자동취소 타이머 시작
 
@@ -64,19 +72,19 @@ public class RequestService {
 	}
 
 	public RequestResponse getRequest(Long requestId) {
-		Request request = findRequestOrThrow(requestId);
+		QuoteRequest request = findRequestOrThrow(requestId);
 		return new RequestResponse(request, lookupMatchingScore(requestId));
 	}
 
 	// ⭐ PDF "의뢰 목록" 화면 - 시공사 관점 (페이지네이션)
 	public Page<RequestResponse> getRequestsForContractor(Long contractorId, Pageable pageable) {
-		return requestRepository.findByContractorId(contractorId, pageable)
+		return quoteRequestRepository.findByContractorId(contractorId, pageable)
 				.map(request -> new RequestResponse(request, lookupMatchingScore(request.getId())));
 	}
 
 	// ⭐ PDF "마이페이지 - 견적 요청 내역" 화면 - 임대인 관점 (페이지네이션)
 	public Page<RequestResponse> getRequestsForLandlord(Long landlordId, Pageable pageable) {
-		return requestRepository.findByLandlordId(landlordId, pageable)
+		return quoteRequestRepository.findByOwnerId(landlordId, pageable)
 				.map(request -> new RequestResponse(request, lookupMatchingScore(request.getId())));
 	}
 
@@ -84,8 +92,8 @@ public class RequestService {
 	// 가능하며, 매칭점수 계산 + 알림 발송까지 이 시점에 한꺼번에 처리합니다.
 	@Transactional
 	public void assignContractor(Long requestId, Long contractorId, Long landlordId) {
-		Request request = findRequestOrThrow(requestId);
-		if (!request.getLandlord().getId().equals(landlordId)) {
+		QuoteRequest request = findRequestOrThrow(requestId);
+		if (!request.getOwner().getId().equals(landlordId)) {
 			throw new ForbiddenAccessException("본인이 등록한 의뢰만 시공사를 배정할 수 있습니다.");
 		}
 		Member contractor = memberRepository.findById(contractorId)
@@ -94,23 +102,23 @@ public class RequestService {
 		request.touch();
 
 		int score = matchingScoreCalculator.calculate(request, contractorId);
-		spaceAnalysisService.updateMatchingScoreIfExists(requestId, score);
+		analysisJobService.updateMatchingScoreIfExists(requestId, score);
 
 		notificationService.notify(contractorId, NotificationType.REQUEST, "새 의뢰가 도착했습니다",
-				String.format("%s(%s) 의뢰가 배정되었습니다. 매칭 점수 %d점", request.getRequestCode(), request.getRegion(),
-						score));
+				String.format("%s(%s) 의뢰가 배정되었습니다. 매칭 점수 %d점", request.getRequestCode(),
+						request.getProperty().getRegion(), score));
 	}
 
 	// ⭐ PDF "의뢰 상세" 화면의 "의뢰 승인" 버튼 - 배정받은 시공사 본인만 가능
 	@Transactional
 	public void approve(Long requestId, Long contractorId) {
-		Request request = findRequestOrThrow(requestId);
+		QuoteRequest request = findRequestOrThrow(requestId);
 		validateAssignedContractor(request, contractorId);
 		validateTransitionable(request, RequestStatus.REVIEWING);
 		request.approve();
 		request.touch();
 
-		notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 승인되었습니다",
+		notificationService.notify(request.getOwner().getId(), NotificationType.REQUEST, "의뢰가 승인되었습니다",
 				String.format("%s 의뢰를 시공사가 승인했습니다. 견적을 확인해 주세요.", request.getRequestCode()));
 	}
 
@@ -118,13 +126,13 @@ public class RequestService {
 	// ⭐ [Figma 반영] 거절 사유(reason/detail)를 함께 받도록 시그니처를 변경했습니다.
 	@Transactional
 	public void reject(Long requestId, Long contractorId, RejectReason reason, String detail) {
-		Request request = findRequestOrThrow(requestId);
+		QuoteRequest request = findRequestOrThrow(requestId);
 		validateAssignedContractor(request, contractorId);
 		validateTransitionable(request, RequestStatus.REVIEWING);
 		request.reject(reason, detail);
 		request.touch();
 
-		notificationService.notify(request.getLandlord().getId(), NotificationType.REQUEST, "의뢰가 거절되었습니다",
+		notificationService.notify(request.getOwner().getId(), NotificationType.REQUEST, "의뢰가 거절되었습니다",
 				String.format("%s 의뢰를 시공사가 거절했습니다.", request.getRequestCode()));
 	}
 
@@ -132,16 +140,16 @@ public class RequestService {
 	// 각 도메인 서비스가 호출해 자동취소 타이머를 리셋하는 공용 확장 지점입니다.
 	@Transactional
 	public void touchActivity(Long requestId) {
-		requestRepository.findById(requestId).ifPresent(Request::touch);
+		quoteRequestRepository.findById(requestId).ifPresent(QuoteRequest::touch);
 	}
 
-	private void validateAssignedContractor(Request request, Long contractorId) {
+	private void validateAssignedContractor(QuoteRequest request, Long contractorId) {
 		if (request.getContractor() == null || !request.getContractor().getId().equals(contractorId)) {
 			throw new ForbiddenAccessException("본인에게 배정된 의뢰만 처리할 수 있습니다.");
 		}
 	}
 
-	private void validateTransitionable(Request request, RequestStatus expected) {
+	private void validateTransitionable(QuoteRequest request, RequestStatus expected) {
 		if (request.getStatus() != expected) {
 			throw new InvalidStatusTransitionException(
 					String.format("현재 상태(%s)에서는 처리할 수 없습니다. 예상 상태: %s", request.getStatus(), expected));
@@ -149,11 +157,11 @@ public class RequestService {
 	}
 
 	private Integer lookupMatchingScore(Long requestId) {
-		return spaceAnalysisRepository.findByRequestId(requestId).map(SpaceAnalysis::getMatchingScore).orElse(null);
+		return analysisJobRepository.findByRequestId(requestId).map(AnalysisJob::getMatchingScore).orElse(null);
 	}
 
-	private Request findRequestOrThrow(Long requestId) {
-		return requestRepository.findById(requestId)
+	private QuoteRequest findRequestOrThrow(Long requestId) {
+		return quoteRequestRepository.findById(requestId)
 				.orElseThrow(() -> new RequestNotFoundException("존재하지 않는 의뢰입니다: " + requestId));
 	}
 

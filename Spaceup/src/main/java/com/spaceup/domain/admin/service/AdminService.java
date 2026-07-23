@@ -20,7 +20,7 @@ import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.entity.MemberApprovalStatus;
 import com.spaceup.domain.member.entity.MemberRole;
 import com.spaceup.domain.member.repository.MemberRepository;
-import com.spaceup.domain.request.repository.RequestRepository;
+import com.spaceup.domain.request.repository.QuoteRequestRepository;
 import com.spaceup.domain.settlement.entity.SettlementStatus;
 import com.spaceup.domain.settlement.repository.SettlementRepository;
 import com.spaceup.global.error.InvalidRoleException;
@@ -36,7 +36,7 @@ public class AdminService {
 
 	private final MemberRepository memberRepository;
 	private final SystemSettingRepository systemSettingRepository;
-	private final RequestRepository requestRepository;
+	private final QuoteRequestRepository requestRepository;
 	private final SettlementRepository settlementRepository;
 
 	// ⭐ PDF "전체 운영 현황" 대시보드 상단 요약 카드

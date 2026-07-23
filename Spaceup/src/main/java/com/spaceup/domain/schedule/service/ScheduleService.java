@@ -12,8 +12,8 @@ import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.domain.notification.entity.NotificationType;
 import com.spaceup.domain.notification.service.NotificationService;
-import com.spaceup.domain.request.entity.Request;
-import com.spaceup.domain.request.repository.RequestRepository;
+import com.spaceup.domain.request.entity.QuoteRequest;
+import com.spaceup.domain.request.repository.QuoteRequestRepository;
 import com.spaceup.domain.schedule.dto.ScheduleCreateRequest;
 import com.spaceup.domain.schedule.dto.ScheduleResponse;
 import com.spaceup.domain.schedule.entity.ScheduleEvent;
@@ -32,7 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class ScheduleService {
 
 	private final ScheduleEventRepository scheduleEventRepository;
-	private final RequestRepository requestRepository;
+	private final QuoteRequestRepository quoteRequestRepository;
 	private final MemberRepository memberRepository;
 	private final NotificationService notificationService;
 	private final ContractorProfileService contractorProfileService;
@@ -43,7 +43,7 @@ public class ScheduleService {
 	public Long createSchedule(Long contractorId, ScheduleCreateRequest dto) {
 		Member contractor = memberRepository.findById(contractorId)
 				.orElseThrow(() -> new MemberNotFoundException("존재하지 않는 회원 번호입니다: " + contractorId));
-		Request request = requestRepository.findById(dto.getRequestId())
+		QuoteRequest request = quoteRequestRepository.findById(dto.getRequestId())
 				.orElseThrow(() -> new RequestNotFoundException("존재하지 않는 의뢰입니다: " + dto.getRequestId()));
 
 		ScheduleEvent event = ScheduleEvent.builder().contractor(contractor).request(request).title(dto.getTitle())
@@ -51,7 +51,7 @@ public class ScheduleService {
 
 		scheduleEventRepository.save(event);
 
-		notificationService.notify(request.getLandlord().getId(), NotificationType.SCHEDULE, "시공 일정이 확정되었습니다",
+		notificationService.notify(request.getOwner().getId(), NotificationType.SCHEDULE, "시공 일정이 확정되었습니다",
 				String.format("%s 일정이 %s로 확정되었습니다.", dto.getTitle(), dto.getScheduledAt()));
 
 		return event.getId();
@@ -68,7 +68,7 @@ public class ScheduleService {
 		validateOwnership(event, contractorId);
 		event.reschedule(newTime);
 
-		notificationService.notify(event.getRequest().getLandlord().getId(), NotificationType.SCHEDULE,
+		notificationService.notify(event.getRequest().getOwner().getId(), NotificationType.SCHEDULE,
 				"시공 일정이 변경되었습니다", String.format("%s 일정이 %s로 변경되었습니다.", event.getTitle(), newTime));
 	}
 
@@ -87,7 +87,7 @@ public class ScheduleService {
 		event.complete();
 		contractorProfileService.increaseCompletedProject(event.getContractor().getId());
 
-		notificationService.notify(event.getRequest().getLandlord().getId(), NotificationType.SCHEDULE,
+		notificationService.notify(event.getRequest().getOwner().getId(), NotificationType.SCHEDULE,
 				"시공이 완료되었습니다", String.format("%s 시공이 완료되었습니다.", event.getTitle()));
 	}
 

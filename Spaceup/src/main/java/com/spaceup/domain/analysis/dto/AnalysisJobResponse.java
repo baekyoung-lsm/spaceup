@@ -1,12 +1,12 @@
 package com.spaceup.domain.analysis.dto;
 
+import com.spaceup.domain.analysis.entity.AnalysisJob;
 import com.spaceup.domain.analysis.entity.AnalysisStatus;
-import com.spaceup.domain.analysis.entity.SpaceAnalysis;
 
 import lombok.Getter;
 
 @Getter
-public class SpaceAnalysisResponse {
+public class AnalysisJobResponse {
 	private final Long id;
 	private final Long requestId;
 	private final AnalysisStatus status;
@@ -25,7 +25,7 @@ public class SpaceAnalysisResponse {
 	private final Integer paybackPeriodMonthsMin;
 	private final Integer paybackPeriodMonthsMax;
 
-	public SpaceAnalysisResponse(SpaceAnalysis analysis) {
+	public AnalysisJobResponse(AnalysisJob analysis) {
 		this.id = analysis.getId();
 		this.requestId = analysis.getRequest().getId();
 		this.status = analysis.getStatus();
