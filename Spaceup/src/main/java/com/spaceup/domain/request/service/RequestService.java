@@ -16,6 +16,9 @@ import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.domain.notification.entity.NotificationType;
 import com.spaceup.domain.notification.service.NotificationService;
+import com.spaceup.domain.quote.entity.ContractorQuote;
+import com.spaceup.domain.quote.entity.QuoteStatus;
+import com.spaceup.domain.quote.repository.ContractorQuoteRepository;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
 import com.spaceup.domain.request.dto.RequestResponse;
 import com.spaceup.domain.request.entity.Property;
@@ -42,6 +45,7 @@ public class RequestService {
 	private final MatchingScoreCalculator matchingScoreCalculator;
 	private final AnalysisJobService analysisJobService;
 	private final AnalysisJobRepository analysisJobRepository;
+	private final ContractorQuoteRepository contractorQuoteRepository;
 	private final NotificationService notificationService;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 시 호출. AI 분석은 domain/analysis 쪽에서 별도로 요청합니다
@@ -73,19 +77,19 @@ public class RequestService {
 
 	public RequestResponse getRequest(Long requestId) {
 		QuoteRequest request = findRequestOrThrow(requestId);
-		return new RequestResponse(request, lookupMatchingScore(requestId));
+		return new RequestResponse(request, lookupMatchingScore(requestId), lookupAcceptedQuoteAmount(requestId));
 	}
 
 	// ⭐ PDF "의뢰 목록" 화면 - 시공사 관점 (페이지네이션)
 	public Page<RequestResponse> getRequestsForContractor(Long contractorId, Pageable pageable) {
-		return quoteRequestRepository.findByContractorId(contractorId, pageable)
-				.map(request -> new RequestResponse(request, lookupMatchingScore(request.getId())));
+		return quoteRequestRepository.findByContractorId(contractorId, pageable).map(request -> new RequestResponse(
+				request, lookupMatchingScore(request.getId()), lookupAcceptedQuoteAmount(request.getId())));
 	}
 
 	// ⭐ PDF "마이페이지 - 견적 요청 내역" 화면 - 임대인 관점 (페이지네이션)
 	public Page<RequestResponse> getRequestsForLandlord(Long landlordId, Pageable pageable) {
-		return quoteRequestRepository.findByOwnerId(landlordId, pageable)
-				.map(request -> new RequestResponse(request, lookupMatchingScore(request.getId())));
+		return quoteRequestRepository.findByOwnerId(landlordId, pageable).map(request -> new RequestResponse(request,
+				lookupMatchingScore(request.getId()), lookupAcceptedQuoteAmount(request.getId())));
 	}
 
 	// ⭐ 임대인이 특정 시공사에게 견적을 요청하는 순간(PDF 08 견적 요청) 시공사가 매칭됩니다. 본인이 등록한 의뢰만 배정
@@ -158,6 +162,13 @@ public class RequestService {
 
 	private Integer lookupMatchingScore(Long requestId) {
 		return analysisJobRepository.findByRequestId(requestId).map(AnalysisJob::getMatchingScore).orElse(null);
+	}
+
+	// ⭐ [고도화] "임대인 예상 공사비 vs 시공사 확정 견적" 비교용 - 수락된 견적이 없으면 null(아직 비교 불가)
+	private Long lookupAcceptedQuoteAmount(Long requestId) {
+		return contractorQuoteRepository
+				.findFirstByRequestIdAndStatusOrderByUpdatedAtDesc(requestId, QuoteStatus.ACCEPTED)
+				.map(ContractorQuote::getTotalAmount).orElse(null);
 	}
 
 	private QuoteRequest findRequestOrThrow(Long requestId) {

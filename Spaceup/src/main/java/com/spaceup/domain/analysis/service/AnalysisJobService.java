@@ -22,6 +22,7 @@ public class AnalysisJobService {
 
 	private final AnalysisJobRepository analysisJobRepository;
 	private final QuoteRequestRepository quoteRequestRepository;
+	private final RentalValueCalculator rentalValueCalculator;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 직후 호출 지점. PENDING 상태로 분석 레코드를 먼저 만들어두고, ML 파이프라인에
 	// 비동기로 분석을 맡긴 뒤 submitResult()로 콜백을 받는 구조입니다.
@@ -31,6 +32,19 @@ public class AnalysisJobService {
 				.orElseThrow(() -> new RequestNotFoundException("존재하지 않는 의뢰입니다: " + requestId));
 
 		AnalysisJob analysis = AnalysisJob.builder().request(request).status(AnalysisStatus.PENDING).build();
+
+		// ⭐ [고도화] 아직 시공사가 매칭되기 전이라 확정 견적이 없으므로, 임대인이 입력한 희망예산을 인테리어비용으로
+		// 임시 사용해 임대인 화면에 보여줄 예비 임대가치 상승분을 미리 계산해둡니다. 확정 견적은
+		// ContractorQuoteService.accept()에서 별도로 계산해 확정 필드에 채웁니다.
+		Long budgetForPreview = request.getBudgetMax() != null ? request.getBudgetMax() : request.getBudget();
+		RentalValueCalculator.Result preliminary = rentalValueCalculator.calculate(
+				request.getProperty().getCurrentDeposit(), request.getProperty().getCurrentMonthlyRent(),
+				budgetForPreview, null, null);
+		if (preliminary != null) {
+			analysis.applyPreliminaryRentalValue(preliminary.depositIncreaseMin(), preliminary.depositIncreaseMax(),
+					preliminary.rentIncreaseMin(), preliminary.rentIncreaseMax());
+		}
+
 		analysisJobRepository.save(analysis);
 		return analysis.getId();
 	}

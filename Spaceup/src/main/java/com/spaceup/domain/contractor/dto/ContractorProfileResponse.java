@@ -1,5 +1,7 @@
 package com.spaceup.domain.contractor.dto;
 
+import java.time.LocalDate;
+
 import com.spaceup.domain.contractor.entity.ContractorProfile;
 
 import lombok.Getter;
@@ -16,6 +18,7 @@ public class ContractorProfileResponse {
 	private final String portfolioUrl;
 	private final String introduction;
 	private final Double rating;
+	private final Integer reviewCount;
 	private final Integer completedProjectCount;
 	private final String managerPosition;
 	private final String consultationHours;
@@ -25,6 +28,9 @@ public class ContractorProfileResponse {
 	private final boolean regionPublic;
 	private final boolean portfolioPublic;
 	private final boolean availableForConsult;
+	private final Long estimateMin;
+	private final Long estimateMax;
+	private final LocalDate availableFromDate;
 
 	public ContractorProfileResponse(ContractorProfile profile) {
 		this.id = profile.getId();
@@ -37,6 +43,7 @@ public class ContractorProfileResponse {
 		this.portfolioUrl = profile.getPortfolioUrl();
 		this.introduction = profile.getIntroduction();
 		this.rating = profile.getRating();
+		this.reviewCount = profile.getReviewCount();
 		this.completedProjectCount = profile.getCompletedProjectCount();
 		this.managerPosition = profile.getManagerPosition();
 		this.consultationHours = profile.getConsultationHours();
@@ -46,5 +53,8 @@ public class ContractorProfileResponse {
 		this.regionPublic = profile.isRegionPublic();
 		this.portfolioPublic = profile.isPortfolioPublic();
 		this.availableForConsult = profile.isAvailableForConsult();
+		this.estimateMin = profile.getEstimateMin();
+		this.estimateMax = profile.getEstimateMax();
+		this.availableFromDate = profile.getAvailableFromDate();
 	}
 }

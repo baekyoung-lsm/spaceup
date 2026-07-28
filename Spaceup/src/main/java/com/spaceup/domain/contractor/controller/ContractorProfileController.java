@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import com.spaceup.domain.contractor.dto.ContractorDashboardResponse;
 import com.spaceup.domain.contractor.dto.ContractorProfileResponse;
 import com.spaceup.domain.contractor.dto.ContractorProfileUpdateRequest;
+import com.spaceup.domain.contractor.dto.ContractorServiceInfoUpdateRequest;
 import com.spaceup.domain.contractor.dto.DisclosureSettingsUpdateRequest;
 import com.spaceup.domain.contractor.dto.ManagerInfoUpdateRequest;
 import com.spaceup.domain.contractor.service.ContractorProfileService;
@@ -54,6 +55,15 @@ public class ContractorProfileController {
 		Long memberId = getMemberId(authentication);
 		contractorProfileService.updateDisclosureSettings(memberId, request);
 		return ResponseEntity.ok(ApiResponse.success("공개 설정이 저장되었습니다.", null));
+	}
+
+	// ⭐ [시공사 추천 점수] "예상 견적 적합도"/"일정 적합도" 계산용 견적 범위·가능일 저장
+	@PutMapping("/me/service-info")
+	public ResponseEntity<ApiResponse<Void>> updateServiceInfo(
+			@RequestBody ContractorServiceInfoUpdateRequest request, Authentication authentication) {
+		Long memberId = getMemberId(authentication);
+		contractorProfileService.updateServiceInfo(memberId, request);
+		return ResponseEntity.ok(ApiResponse.success("견적 범위/가능 일정이 저장되었습니다.", null));
 	}
 
 	// ⭐ [Figma 반영] "시공사 대시보드" 화면

@@ -32,13 +32,16 @@ public class RequestResponse {
 	// ⭐ [Figma 반영] "의뢰 목록" 카드에 매칭 점수가 바로 보여서, 분석 API를 따로 안 타도 되게 여기에도 노출합니다.
 	// 값은 RequestService가 AnalysisJobRepository에서 조회해 주입합니다(분석 전이면 null).
 	private final Integer matchingScore;
+	// ⭐ [고도화] "임대인 예상 공사비(budget) vs 시공사 확정 견적" 비교용 - 수락(ACCEPTED)된 견적이 있으면 그 금액,
+	// 아직 없으면 null. matchingScore와 같은 방식으로 RequestService가 조회해 주입합니다.
+	private final Long acceptedQuoteAmount;
 	private final LocalDateTime createdAt;
 
 	public RequestResponse(QuoteRequest request) {
-		this(request, null);
+		this(request, null, null);
 	}
 
-	public RequestResponse(QuoteRequest request, Integer matchingScore) {
+	public RequestResponse(QuoteRequest request, Integer matchingScore, Long acceptedQuoteAmount) {
 		this.id = request.getId();
 		this.requestCode = request.getRequestCode();
 		this.landlordId = request.getOwner().getId();
@@ -57,6 +60,7 @@ public class RequestResponse {
 		this.rejectReasonDetail = request.getRejectReasonDetail();
 		this.lastActivityAt = request.getLastActivityAt();
 		this.matchingScore = matchingScore;
+		this.acceptedQuoteAmount = acceptedQuoteAmount;
 		this.createdAt = request.getCreatedAt();
 	}
 }

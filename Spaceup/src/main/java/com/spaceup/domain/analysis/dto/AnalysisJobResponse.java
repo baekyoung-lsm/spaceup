@@ -24,6 +24,14 @@ public class AnalysisJobResponse {
 	private final Long expectedRentIncreaseMax;
 	private final Integer paybackPeriodMonthsMin;
 	private final Integer paybackPeriodMonthsMax;
+	// ⭐ [고도화] 확정 전세가치 상승분 (시공사 견적 수락 시점에 채워짐, 그 전까진 null)
+	private final Long depositIncreaseMin;
+	private final Long depositIncreaseMax;
+	// ⭐ [고도화] 예비값 (시공사 매칭 전, 임대인 희망예산 기준으로 미리 계산됨)
+	private final Long preliminaryDepositIncreaseMin;
+	private final Long preliminaryDepositIncreaseMax;
+	private final Long preliminaryRentIncreaseMin;
+	private final Long preliminaryRentIncreaseMax;
 
 	public AnalysisJobResponse(AnalysisJob analysis) {
 		this.id = analysis.getId();
@@ -43,5 +51,11 @@ public class AnalysisJobResponse {
 		this.expectedRentIncreaseMax = analysis.getExpectedRentIncreaseMax();
 		this.paybackPeriodMonthsMin = analysis.getPaybackPeriodMonthsMin();
 		this.paybackPeriodMonthsMax = analysis.getPaybackPeriodMonthsMax();
+		this.depositIncreaseMin = analysis.getDepositIncreaseMin();
+		this.depositIncreaseMax = analysis.getDepositIncreaseMax();
+		this.preliminaryDepositIncreaseMin = analysis.getPreliminaryDepositIncreaseMin();
+		this.preliminaryDepositIncreaseMax = analysis.getPreliminaryDepositIncreaseMax();
+		this.preliminaryRentIncreaseMin = analysis.getPreliminaryRentIncreaseMin();
+		this.preliminaryRentIncreaseMax = analysis.getPreliminaryRentIncreaseMax();
 	}
 }

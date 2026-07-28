@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.spaceup.domain.contractor.dto.ContractorDashboardResponse;
 import com.spaceup.domain.contractor.dto.ContractorProfileResponse;
 import com.spaceup.domain.contractor.dto.ContractorProfileUpdateRequest;
+import com.spaceup.domain.contractor.dto.ContractorServiceInfoUpdateRequest;
 import com.spaceup.domain.contractor.dto.DisclosureSettingsUpdateRequest;
 import com.spaceup.domain.contractor.dto.ManagerInfoUpdateRequest;
 import com.spaceup.domain.contractor.entity.ContractorProfile;
@@ -62,6 +63,13 @@ public class ContractorProfileService {
 		ContractorProfile profile = findOrCreateProfile(memberId);
 		profile.updateDisclosureSettings(dto.isProfilePublic(), dto.isContactPublic(), dto.isSpecialtyPublic(),
 				dto.isRegionPublic(), dto.isPortfolioPublic(), dto.isAvailableForConsult());
+	}
+
+	// ⭐ [시공사 추천 점수] "예상 견적 적합도"/"일정 적합도" 계산에 쓰이는 견적 범위·가능일 저장
+	@Transactional
+	public void updateServiceInfo(Long memberId, ContractorServiceInfoUpdateRequest dto) {
+		ContractorProfile profile = findOrCreateProfile(memberId);
+		profile.updateServiceInfo(dto.getEstimateMin(), dto.getEstimateMax(), dto.getAvailableFromDate());
 	}
 
 	// ⭐ [Figma 반영] "시공사 대시보드" 상단 요약 카드. 정확한 단계 매핑은 API 명세서 비고 참고.

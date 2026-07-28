@@ -1,5 +1,7 @@
 package com.spaceup.domain.contractor.entity;
 
+import java.time.LocalDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -62,9 +64,25 @@ public class ContractorProfile extends BaseTimeEntity {
 	@Column(name = "rating")
 	private Double rating = 0.0; // 평균 평점
 
+	// ⭐ [시공사 추천 점수] 리뷰 개수 - 아직 리뷰 도메인이 없어서 rating과 마찬가지로 외부에서 갱신해 주는 값입니다.
+	@Builder.Default
+	@Column(name = "review_count")
+	private Integer reviewCount = 0;
+
 	@Builder.Default
 	@Column(name = "completed_project_count")
 	private Integer completedProjectCount = 0;
+
+	// ⭐ [시공사 추천 점수] "예상 견적 적합도" 계산용 - 이 업체가 통상 제시하는 견적 범위
+	@Column(name = "estimate_min")
+	private Long estimateMin;
+
+	@Column(name = "estimate_max")
+	private Long estimateMax;
+
+	// ⭐ [시공사 추천 점수] "일정 적합도" 계산용 - 가장 빠른 시공 가능일
+	@Column(name = "available_from_date")
+	private LocalDate availableFromDate;
 
 	// ===== ⭐ [Figma 반영] "담당자 정보" 화면 =====
 	@Column(name = "manager_position", length = 30)
@@ -130,8 +148,16 @@ public class ContractorProfile extends BaseTimeEntity {
 		this.completedProjectCount++;
 	}
 
-	// ⭐ 리뷰/평점 도메인이 생기면 그쪽에서 평균을 계산해 이 메서드로 반영
-	public void updateRating(double newRating) {
+	// ⭐ 리뷰/평점 도메인이 생기면 그쪽에서 평균+개수를 계산해 이 메서드로 반영
+	public void updateRating(double newRating, int reviewCount) {
 		this.rating = newRating;
+		this.reviewCount = reviewCount;
+	}
+
+	// ⭐ [시공사 추천 점수] "견적 범위 / 가능 일정" 저장 - 시공사가 직접 입력(마이페이지)
+	public void updateServiceInfo(Long estimateMin, Long estimateMax, LocalDate availableFromDate) {
+		this.estimateMin = estimateMin;
+		this.estimateMax = estimateMax;
+		this.availableFromDate = availableFromDate;
 	}
 }

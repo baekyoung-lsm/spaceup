@@ -1,5 +1,7 @@
 package com.spaceup.domain.request.controller;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +11,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.spaceup.domain.analysis.service.AnalysisJobService;
+import com.spaceup.domain.matching.dto.RecommendedContractorResponse;
+import com.spaceup.domain.matching.service.ContractorRecommendationService;
 import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.request.dto.RequestCreateRequest;
 import com.spaceup.domain.request.dto.RequestRejectRequest;
@@ -25,6 +29,7 @@ public class RequestController {
 
 	private final RequestService requestService;
 	private final AnalysisJobService analysisJobService;
+	private final ContractorRecommendationService contractorRecommendationService;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 버튼 → 의뢰 생성 (로그인한 임대인 본인 명의로 생성) + AI 분석 PENDING 등록
 	@PostMapping
@@ -58,6 +63,14 @@ public class RequestController {
 		Long landlordId = getMemberId(authentication);
 		return ResponseEntity
 				.ok(ApiResponse.success("견적 요청 내역 조회 완료", requestService.getRequestsForLandlord(landlordId, pageable)));
+	}
+
+	// ⭐ [시공사 추천 점수] "08 견적 요청하기" 화면에서 시공사를 고르기 전, 추천 상위 3개를 먼저 보여줄 때 사용
+	@GetMapping("/{requestId}/recommended-contractors")
+	public ResponseEntity<ApiResponse<List<RecommendedContractorResponse>>> getRecommendedContractors(
+			@PathVariable Long requestId) {
+		return ResponseEntity
+				.ok(ApiResponse.success("추천 시공사 조회 완료", contractorRecommendationService.recommend(requestId)));
 	}
 
 	// ⭐ PDF "08 견적 요청하기" 버튼 → 특정 시공사에게 의뢰를 배정 (본인 의뢰만 가능)
