@@ -5,13 +5,38 @@ import org.springframework.web.bind.MethodArgumentNotValidException; // 👈 검
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.spaceup.domain.rental.exception.RentalApiConfigurationException;
+import com.spaceup.domain.rental.exception.RentalApiException;
 import com.spaceup.global.util.ApiResponse;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+	// ⭐ [국토부 실거래가 연동] 서비스키 미설정 등 설정 오류 - 운영자가 바로 인지할 수 있도록 503
+	@ExceptionHandler(RentalApiConfigurationException.class)
+	public ResponseEntity<ApiResponse<Void>> handleRentalApiConfigurationException(
+			RentalApiConfigurationException e) {
+		log.warn("전월세 API 설정 오류: {}", e.getMessage());
+		return ResponseEntity.status(503).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	// ⭐ [국토부 실거래가 연동] 외부 API 호출/응답 파싱 실패 - 우리 서버 문제가 아니라 상위 게이트웨이(502) 성격
+	@ExceptionHandler(RentalApiException.class)
+	public ResponseEntity<ApiResponse<Void>> handleRentalApiException(RentalApiException e) {
+		log.warn("전월세 외부 API 오류: {}", e.getMessage());
+		return ResponseEntity.status(502).body(ApiResponse.fail(e.getMessage()));
+	}
+
+	// ⭐ [국토부 실거래가 연동] dealYm(존재하지 않는 연월) 등 값 자체는 형식은 맞지만 의미상 잘못된 경우
+	@ExceptionHandler({ IllegalArgumentException.class, ConstraintViolationException.class })
+	public ResponseEntity<ApiResponse<Void>> handleRentalRequestValidationException(Exception e) {
+		log.warn("전월세 API 요청값 오류: {}", e.getMessage());
+		return ResponseEntity.status(400).body(ApiResponse.fail(e.getMessage()));
+	}
 
 	// ⭐ 2차 고도화 추가: 형식 검증 에러(@Valid) 발생 시 첫 번째 오타 원인 문구만 낚아채 응답하는 포획선 [우선순위]
 	@ExceptionHandler(MethodArgumentNotValidException.class)
