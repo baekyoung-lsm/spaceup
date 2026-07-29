@@ -42,6 +42,13 @@ public class PortfolioController {
 		return ResponseEntity.ok(ApiResponse.success("포트폴리오 조회 완료", portfolioService.getPortfolio(portfolioId)));
 	}
 
+	// ⭐ [프론트 연동] "시공사 상세" 화면에서 특정 시공사의 공개 포트폴리오 목록을 보여줄 때 사용
+	@GetMapping("/contractor/{contractorId}")
+	public ResponseEntity<ApiResponse<List<PortfolioResponse>>> getPublicPortfolios(@PathVariable Long contractorId) {
+		return ResponseEntity
+				.ok(ApiResponse.success("포트폴리오 목록 조회 완료", portfolioService.getPublicPortfolios(contractorId)));
+	}
+
 	@PutMapping("/{portfolioId}")
 	public ResponseEntity<ApiResponse<Void>> update(@PathVariable Long portfolioId,
 			@Valid @RequestBody PortfolioCreateRequest request, Authentication authentication) {

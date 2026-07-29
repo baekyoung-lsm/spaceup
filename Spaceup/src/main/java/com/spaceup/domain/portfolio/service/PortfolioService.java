@@ -51,6 +51,12 @@ public class PortfolioService {
 		return new PortfolioResponse(findOrThrow(portfolioId));
 	}
 
+	// ⭐ [프론트 연동] "시공사 상세" 화면 - 다른 사용자가 해당 시공사의 공개 포트폴리오만 조회
+	public List<PortfolioResponse> getPublicPortfolios(Long contractorId) {
+		return portfolioRepository.findByContractorIdAndIsPublic(contractorId, true).stream()
+				.map(PortfolioResponse::new).collect(Collectors.toList());
+	}
+
 	// ⭐ PDF "포트폴리오 수정" 화면 - 본인 소유만 가능
 	@Transactional
 	public void update(Long portfolioId, Long contractorId, PortfolioCreateRequest dto) {

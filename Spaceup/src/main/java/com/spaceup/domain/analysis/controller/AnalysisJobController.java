@@ -1,12 +1,17 @@
 package com.spaceup.domain.analysis.controller;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.spaceup.domain.analysis.dto.AnalysisJobEditRequest;
 import com.spaceup.domain.analysis.dto.AnalysisJobResponse;
 import com.spaceup.domain.analysis.dto.AnalysisJobResultRequest;
 import com.spaceup.domain.analysis.service.AnalysisJobService;
+import com.spaceup.domain.product.dto.RecommendedProductResponse;
+import com.spaceup.domain.product.service.ProductRecommendationService;
 import com.spaceup.global.util.ApiResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -19,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class AnalysisJobController {
 
 	private final AnalysisJobService analysisJobService;
+	private final ProductRecommendationService productRecommendationService;
 
 	// ⭐ PDF "02 임대 정보 입력" 완료 직후 - 분석을 PENDING 상태로 요청
 	@PostMapping("/request/{requestId}")
@@ -35,6 +41,14 @@ public class AnalysisJobController {
 		return ResponseEntity.ok(ApiResponse.success("분석 결과가 반영되었습니다.", null));
 	}
 
+	// ⭐ [프론트 연동] "공간 정보 확인" 화면에서 사용자가 방 개수/욕실 개수/발코니 유무/주방 형태/면적을 직접 수정
+	@PatchMapping("/request/{requestId}")
+	public ResponseEntity<ApiResponse<Void>> updateBasicInfo(@PathVariable Long requestId,
+			@RequestBody AnalysisJobEditRequest request) {
+		analysisJobService.updateBasicInfo(requestId, request);
+		return ResponseEntity.ok(ApiResponse.success("분석 결과가 수정되었습니다.", null));
+	}
+
 	@PostMapping("/request/{requestId}/fail")
 	public ResponseEntity<ApiResponse<Void>> markFailed(@PathVariable Long requestId) {
 		analysisJobService.markFailed(requestId);
@@ -45,5 +59,13 @@ public class AnalysisJobController {
 	@GetMapping("/request/{requestId}")
 	public ResponseEntity<ApiResponse<AnalysisJobResponse>> getByRequest(@PathVariable Long requestId) {
 		return ResponseEntity.ok(ApiResponse.success("분석 결과 조회 완료", analysisJobService.getByRequest(requestId)));
+	}
+
+	// ⭐ [프론트 연동] "추천 상품" 화면 - 분석 결과 기반 바닥재/벽지 추천 (카테고리별 상위 3개)
+	@GetMapping("/request/{requestId}/recommended-products")
+	public ResponseEntity<ApiResponse<List<RecommendedProductResponse>>> getRecommendedProducts(
+			@PathVariable Long requestId) {
+		return ResponseEntity
+				.ok(ApiResponse.success("추천 상품 조회 완료", productRecommendationService.recommend(requestId)));
 	}
 }

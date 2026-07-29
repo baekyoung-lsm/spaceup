@@ -31,6 +31,13 @@ public class ContractorProfileController {
 		return ResponseEntity.ok(ApiResponse.success("프로필 조회 완료", contractorProfileService.getOrCreate(memberId)));
 	}
 
+	// ⭐ [프론트 연동] "시공사 상세" 화면 - 임대인이 견적 요청 전/후 시공사 정보를 살펴볼 때 사용
+	@GetMapping("/{contractorId}")
+	public ResponseEntity<ApiResponse<ContractorProfileResponse>> getPublicProfile(@PathVariable Long contractorId) {
+		return ResponseEntity
+				.ok(ApiResponse.success("시공사 상세 조회 완료", contractorProfileService.getPublicProfile(contractorId)));
+	}
+
 	@PutMapping("/me")
 	public ResponseEntity<ApiResponse<Void>> updateMyProfile(@Valid @RequestBody ContractorProfileUpdateRequest request,
 			Authentication authentication) {

@@ -58,4 +58,10 @@ public class Property extends BaseTimeEntity {
 
 	@Column(name = "current_monthly_rent")
 	private Long currentMonthlyRent; // 현재 월세(원)
+
+	// ⭐ [프론트 연동] "공간 정보 확인" 화면에서 임대인이 AI 분석 결과의 면적을 직접 수정할 수 있어야 함
+	// (AnalysisJobService.updateBasicInfo 참고). 면적은 Property가 갖고 있어 여기서 함께 수정합니다.
+	public void updateArea(Double exclusiveAreaM2) {
+		this.exclusiveAreaM2 = exclusiveAreaM2;
+	}
 }

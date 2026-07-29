@@ -12,6 +12,7 @@ import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.product.dto.ProductCreateRequest;
 import com.spaceup.domain.product.dto.ProductResponse;
 import com.spaceup.domain.product.dto.StockAdjustRequest;
+import com.spaceup.domain.product.entity.ProductCategory;
 import com.spaceup.domain.product.entity.ProductStatus;
 import com.spaceup.domain.product.service.ProductService;
 import com.spaceup.global.util.ApiResponse;
@@ -45,6 +46,13 @@ public class ProductController {
 	@GetMapping("/{productId}")
 	public ResponseEntity<ApiResponse<ProductResponse>> getProduct(@PathVariable Long productId) {
 		return ResponseEntity.ok(ApiResponse.success("상품 조회 완료", productService.getProduct(productId)));
+	}
+
+	// ⭐ [프론트 연동] 일반 사용자(임대인)용 상품 목록/검색 화면 - 벤더 구분 없이 카테고리 필터 + 페이지네이션
+	@GetMapping
+	public ResponseEntity<ApiResponse<Page<ProductResponse>>> getProducts(
+			@RequestParam(required = false) ProductCategory category, @PageableDefault(size = 20) Pageable pageable) {
+		return ResponseEntity.ok(ApiResponse.success("상품 목록 조회 완료", productService.getProducts(category, pageable)));
 	}
 
 	// ⭐ PDF "자재 상품 관리" 목록 화면 (자재업체 로그인 기준 - 본인 상품만, 페이지네이션)

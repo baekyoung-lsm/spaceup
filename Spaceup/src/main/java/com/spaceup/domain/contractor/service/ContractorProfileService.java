@@ -85,6 +85,13 @@ public class ContractorProfileService {
 				pendingAmount != null ? pendingAmount : 0L);
 	}
 
+	// ⭐ [프론트 연동] "시공사 상세" 화면 - 임대인이 다른 시공사의 프로필을 조회할 때 사용.
+	// /me와 달리 프로필이 없으면 빈 값을 만들어주지 않고 404를 던집니다(아직 정보를 등록하지 않은 시공사이므로).
+	public ContractorProfileResponse getPublicProfile(Long contractorId) {
+		return new ContractorProfileResponse(contractorProfileRepository.findByMemberId(contractorId)
+				.orElseThrow(() -> new MemberNotFoundException("아직 프로필을 등록하지 않은 시공사입니다: " + contractorId)));
+	}
+
 	// ⭐ 시공 완료 시 domain/schedule 쪽에서 호출해 실적을 누적하는 확장 지점
 	@Transactional
 	public void increaseCompletedProject(Long memberId) {

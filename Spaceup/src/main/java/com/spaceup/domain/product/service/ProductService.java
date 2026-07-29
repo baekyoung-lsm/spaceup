@@ -13,6 +13,7 @@ import com.spaceup.domain.member.repository.MemberRepository;
 import com.spaceup.domain.product.dto.ProductCreateRequest;
 import com.spaceup.domain.product.dto.ProductResponse;
 import com.spaceup.domain.product.entity.Product;
+import com.spaceup.domain.product.entity.ProductCategory;
 import com.spaceup.domain.product.entity.ProductStatus;
 import com.spaceup.domain.product.repository.ProductRepository;
 import com.spaceup.global.error.ForbiddenAccessException;
@@ -85,6 +86,15 @@ public class ProductService {
 	// ⭐ PDF "자재 상품 관리" 목록 (자재업체 로그인 기준 - 본인이 등록한 상품만, 페이지네이션)
 	public Page<ProductResponse> getProductsByVendor(Long vendorId, Pageable pageable) {
 		return productRepository.findByVendorId(vendorId, pageable).map(ProductResponse::new);
+	}
+
+	// ⭐ [프론트 연동] 일반 사용자(임대인)용 상품 목록 조회 - 벤더 구분 없이 전체 상품, 판매중지 상품은 제외.
+	// category가 null이면 전체 카테고리를 조회합니다.
+	public Page<ProductResponse> getProducts(ProductCategory category, Pageable pageable) {
+		Page<Product> products = category != null
+				? productRepository.findByCategoryAndStatusNot(category, ProductStatus.SUSPENDED, pageable)
+				: productRepository.findByStatusNot(ProductStatus.SUSPENDED, pageable);
+		return products.map(ProductResponse::new);
 	}
 
 	private Product findProductOrThrow(Long productId) {

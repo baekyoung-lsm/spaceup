@@ -143,6 +143,23 @@ public class AnalysisJob extends BaseTimeEntity {
 		this.status = AnalysisStatus.COMPLETED;
 	}
 
+	// ⭐ [프론트 연동] "공간 정보 확인" 화면에서 임대인이 AI가 인식한 방 개수/욕실 개수/발코니 유무/주방 형태를
+	// 직접 고쳐 저장할 수 있어야 함(값이 null인 필드는 변경하지 않음 - 부분 수정 허용).
+	public void updateBasicInfo(Integer roomCount, Integer bathroomCount, Boolean hasBalcony, String kitchenType) {
+		if (roomCount != null) {
+			this.roomCount = roomCount;
+		}
+		if (bathroomCount != null) {
+			this.bathroomCount = bathroomCount;
+		}
+		if (hasBalcony != null) {
+			this.hasBalcony = hasBalcony;
+		}
+		if (kitchenType != null) {
+			this.kitchenType = kitchenType;
+		}
+	}
+
 	public void fail() {
 		this.status = AnalysisStatus.FAILED;
 	}

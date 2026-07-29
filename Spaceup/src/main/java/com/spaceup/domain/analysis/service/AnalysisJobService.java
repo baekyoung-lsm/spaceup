@@ -3,6 +3,7 @@ package com.spaceup.domain.analysis.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.spaceup.domain.analysis.dto.AnalysisJobEditRequest;
 import com.spaceup.domain.analysis.dto.AnalysisJobResponse;
 import com.spaceup.domain.analysis.dto.AnalysisJobResultRequest;
 import com.spaceup.domain.analysis.entity.AnalysisJob;
@@ -57,6 +58,17 @@ public class AnalysisJobService {
 				dto.getSpaceScore(), dto.getConditionScore(), dto.getIssueTags(), dto.getEstimatedQuoteMin(),
 				dto.getEstimatedQuoteMax(), dto.getExpectedRentIncreaseMin(), dto.getExpectedRentIncreaseMax(),
 				dto.getPaybackPeriodMonthsMin(), dto.getPaybackPeriodMonthsMax());
+	}
+
+	// ⭐ [프론트 연동] "공간 정보 확인" 화면에서 사용자가 방 개수/욕실 개수/발코니 유무/주방 형태/면적을 직접 수정
+	@Transactional
+	public void updateBasicInfo(Long requestId, AnalysisJobEditRequest dto) {
+		AnalysisJob analysis = findByRequestOrThrow(requestId);
+		analysis.updateBasicInfo(dto.getRoomCount(), dto.getBathroomCount(), dto.getHasBalcony(),
+				dto.getKitchenType());
+		if (dto.getExclusiveAreaM2() != null) {
+			analysis.getRequest().getProperty().updateArea(dto.getExclusiveAreaM2());
+		}
 	}
 
 	@Transactional

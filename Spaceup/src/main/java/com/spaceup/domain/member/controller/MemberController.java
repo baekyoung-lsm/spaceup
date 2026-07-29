@@ -6,14 +6,18 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.spaceup.domain.member.dto.LoginRequest;
+import com.spaceup.domain.member.dto.LoginResponse;
 import com.spaceup.domain.member.dto.MemberJoinRequest;
 import com.spaceup.domain.member.dto.MemberResponse;
 import com.spaceup.domain.member.dto.MemberUpdateRequest;
 import com.spaceup.domain.member.dto.PhoneUpdateRequest;
 import com.spaceup.domain.member.dto.PhoneVerificationConfirmRequest;
+import com.spaceup.domain.member.dto.PhoneVerificationPublicConfirmRequest;
+import com.spaceup.domain.member.dto.PhoneVerificationSendRequest;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.security.MemberPrincipal;
 import com.spaceup.domain.member.service.MemberService;
+import com.spaceup.domain.member.service.PhoneVerificationService;
 import com.spaceup.global.error.UnauthorizedAccessException;
 import com.spaceup.global.security.JwtTokenProvider;
 import com.spaceup.global.util.ApiResponse;
@@ -27,6 +31,7 @@ public class MemberController {
 
 	private final MemberService memberService;
 	private final JwtTokenProvider jwtTokenProvider;
+	private final PhoneVerificationService phoneVerificationService;
 
 	@PostMapping("/join")
 	public ResponseEntity<ApiResponse<Void>> join(@Valid @RequestBody MemberJoinRequest request) {
@@ -37,11 +42,29 @@ public class MemberController {
 		return ResponseEntity.ok(ApiResponse.success("회원가입이 완벽하게 완료되었습니다.", null));
 	}
 
+	// ⭐ [프론트 연동] 회원가입 "휴대폰 인증" 단계 - 계정이 아직 없으므로 JWT 없이 호출 가능해야 합니다
+	// (SecurityConfig의 permitAll 목록 참고). 목업: 실제 SMS 미발송, 발급한 코드를 응답에 그대로 실어 보냅니다.
+	@PostMapping("/join/phone/verify-code/send")
+	public ResponseEntity<ApiResponse<String>> sendJoinPhoneVerificationCode(
+			@Valid @RequestBody PhoneVerificationSendRequest request) {
+		String code = phoneVerificationService.sendCode(request.getPhoneNumber());
+		return ResponseEntity.ok(ApiResponse.success("인증코드가 발급되었습니다. (목업: 실제 SMS 미발송, 아래 코드를 그대로 사용하세요)", code));
+	}
+
+	@PostMapping("/join/phone/verify-code/confirm")
+	public ResponseEntity<ApiResponse<Void>> confirmJoinPhoneVerificationCode(
+			@Valid @RequestBody PhoneVerificationPublicConfirmRequest request) {
+		phoneVerificationService.confirmCode(request.getPhoneNumber(), request.getCode());
+		return ResponseEntity.ok(ApiResponse.success("휴대폰 인증이 완료되었습니다. 이제 회원가입을 진행할 수 있습니다.", null));
+	}
+
 	@PostMapping("/login")
-	public ResponseEntity<ApiResponse<String>> login(@Valid @RequestBody LoginRequest loginRequest) {
-		if (memberService.login(loginRequest.getUsername(), loginRequest.getPassword())) {
-			String token = jwtTokenProvider.createToken(loginRequest.getUsername());
-			return ResponseEntity.ok(ApiResponse.success("로그인 성공!", token));
+	public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
+		Member member = memberService.login(loginRequest.getUsername(), loginRequest.getPassword());
+		if (member != null) {
+			String role = member.getRole().name();
+			String token = jwtTokenProvider.createToken(member.getUsername(), member.getId(), role);
+			return ResponseEntity.ok(ApiResponse.success("로그인 성공!", new LoginResponse(token, member.getId(), role)));
 		}
 		return ResponseEntity.status(401).body(ApiResponse.fail("로그인 실패: 아이디 또는 비밀번호가 틀렸습니다."));
 	}
