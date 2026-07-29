@@ -68,8 +68,8 @@
 							"    pm.response.to.have.status(200);",
 							"    var data = pm.response.json();",
 							"    pm.expect(data.success).to.eql(true);",
-							"    pm.expect(data.data).to.be.a('string').and.not.empty;",
-							"    pm.collectionVariables.set('token', data.data);",
+							"    pm.expect(data.data.accessToken).to.be.a('string').and.not.empty;",
+							"    pm.collectionVariables.set('token', data.data.accessToken);",
 							"});"
 						]
 					}
@@ -261,8 +261,8 @@
 							"    pm.response.to.have.status(200);",
 							"    var data = pm.response.json();",
 							"    pm.expect(data.success).to.eql(true);",
-							"    pm.expect(data.data).to.be.a('string').and.not.empty;",
-							"    pm.collectionVariables.set('contractorToken', data.data);",
+							"    pm.expect(data.data.accessToken).to.be.a('string').and.not.empty;",
+							"    pm.collectionVariables.set('contractorToken', data.data.accessToken);",
 							"});"
 						]
 					}
