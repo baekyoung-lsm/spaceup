@@ -1,5 +1,7 @@
 package com.spaceup.domain.request.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.spaceup.domain.analysis.entity.AnalysisJob;
 import com.spaceup.domain.analysis.repository.AnalysisJobRepository;
 import com.spaceup.domain.analysis.service.AnalysisJobService;
+import com.spaceup.domain.contractor.repository.ContractorProfileRepository;
 import com.spaceup.domain.matching.service.MatchingScoreCalculator;
 import com.spaceup.domain.member.entity.Member;
 import com.spaceup.domain.member.repository.MemberRepository;
@@ -43,6 +46,7 @@ public class RequestService {
 	private final PropertyRepository propertyRepository;
 	private final MemberRepository memberRepository;
 	private final MatchingScoreCalculator matchingScoreCalculator;
+	private final ContractorProfileRepository contractorProfileRepository;
 	private final AnalysisJobService analysisJobService;
 	private final AnalysisJobRepository analysisJobRepository;
 	private final ContractorQuoteRepository contractorQuoteRepository;
@@ -105,7 +109,12 @@ public class RequestService {
 		request.assignContractor(contractor);
 		request.touch();
 
-		int score = matchingScoreCalculator.calculate(request, contractorId);
+		// ⭐ [시공사 추천 점수 고도화] 프로필을 아직 등록 안 한 시공사(견적범위/가능일 미입력)는 점수를 매길 근거가
+		// 없어 0점으로 저장합니다(기존 MatchingScoreCalculator 내부 조회 실패 시 0점 처리하던 것과 동일한 동작).
+		BigDecimal matchScore = contractorProfileRepository.findByMemberId(contractorId)
+				.map(profile -> matchingScoreCalculator.calculate(request, profile).matchScore())
+				.orElse(BigDecimal.ZERO);
+		int score = matchScore.setScale(0, RoundingMode.HALF_UP).intValue();
 		analysisJobService.updateMatchingScoreIfExists(requestId, score);
 
 		notificationService.notify(contractorId, NotificationType.REQUEST, "새 의뢰가 도착했습니다",

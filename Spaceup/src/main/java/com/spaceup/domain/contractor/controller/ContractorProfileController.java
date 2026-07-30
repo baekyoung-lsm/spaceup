@@ -67,7 +67,7 @@ public class ContractorProfileController {
 	// ⭐ [시공사 추천 점수] "예상 견적 적합도"/"일정 적합도" 계산용 견적 범위·가능일 저장
 	@PutMapping("/me/service-info")
 	public ResponseEntity<ApiResponse<Void>> updateServiceInfo(
-			@RequestBody ContractorServiceInfoUpdateRequest request, Authentication authentication) {
+			@Valid @RequestBody ContractorServiceInfoUpdateRequest request, Authentication authentication) {
 		Long memberId = getMemberId(authentication);
 		contractorProfileService.updateServiceInfo(memberId, request);
 		return ResponseEntity.ok(ApiResponse.success("견적 범위/가능 일정이 저장되었습니다.", null));

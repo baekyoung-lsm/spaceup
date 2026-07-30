@@ -66,11 +66,13 @@ public class RequestController {
 	}
 
 	// ⭐ [시공사 추천 점수] "08 견적 요청하기" 화면에서 시공사를 고르기 전, 추천 상위 3개를 먼저 보여줄 때 사용
+	// ⭐ [시공사 추천 점수 고도화] 본인이 등록한 의뢰가 아니면 403 (ContractorRecommendationService에서 검증)
 	@GetMapping("/{requestId}/recommended-contractors")
 	public ResponseEntity<ApiResponse<List<RecommendedContractorResponse>>> getRecommendedContractors(
-			@PathVariable Long requestId) {
-		return ResponseEntity
-				.ok(ApiResponse.success("추천 시공사 조회 완료", contractorRecommendationService.recommend(requestId)));
+			@PathVariable Long requestId, Authentication authentication) {
+		Long memberId = getMemberId(authentication);
+		return ResponseEntity.ok(
+				ApiResponse.success("추천 시공사 조회 완료", contractorRecommendationService.recommend(requestId, memberId)));
 	}
 
 	// ⭐ PDF "08 견적 요청하기" 버튼 → 특정 시공사에게 의뢰를 배정 (본인 의뢰만 가능)
